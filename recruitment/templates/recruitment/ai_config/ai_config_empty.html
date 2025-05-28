@@ -1,0 +1,62 @@
+<!-- # recruitment/templates/recruitment/ai_config/ai_config_empty.html -->
+
+{% extends 'settings.html' %}
+{% load i18n %}
+{% block settings %}
+{% load static %}
+
+<div class="oh-inner-sidebar-content">
+    <div class="oh-inner-sidebar-content__header d-flex justify-content-between align-items-center">
+        <h2 class="oh-inner-sidebar-content__title">{% trans "Configuration IA" %}</h2>
+        {% if perms.recruitment.add_aiconfiguration %}
+        <button
+            class="oh-btn oh-btn--secondary oh-btn--shadow"
+            data-toggle="oh-modal-toggle"
+            data-target="#aiConfigModal"
+            hx-get="{% url 'ai-configuration-create' %}"
+            hx-target="#aiConfigForm"
+        >
+            <ion-icon name="add-outline" class="me-1"></ion-icon>
+            {% trans "Créer ma première configuration" %}
+        </button>
+        {% endif %}
+    </div>
+
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh;">
+        <img style="display: block; width: 20%; margin: 20px auto; filter: opacity(0.6);" 
+             src="{% static 'images/ui/artificial-intelligence.png' %}" alt="Configuration IA" />
+        
+        <h4 class="oh-404__subtitle mb-3">{% trans "Aucune configuration IA définie" %}</h4>
+        
+        <p class="oh-text--muted text-center mb-4" style="max-width: 500px;">
+            {% trans "Créez votre première configuration IA pour automatiser l'analyse et le scoring des CV de vos candidats. Vous pourrez personnaliser les critères d'évaluation selon vos besoins." %}
+        </p>
+
+        <div class="oh-alert oh-alert--info" style="max-width: 600px;">
+            <div class="oh-alert__content">
+                <h6>💡 {% trans "Pourquoi configurer l'IA ?" %}</h6>
+                <ul class="mb-0">
+                    <li>{% trans "Analyse automatique des CV selon vos critères" %}</li>
+                    <li>{% trans "Scoring intelligent basé sur la pertinence du poste" %}</li>
+                    <li>{% trans "Configurations différentes par filiale" %}</li>
+                    <li>{% trans "Prompts personnalisables selon vos besoins" %}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Création -->
+<div class="oh-modal" id="aiConfigModal" role="dialog">
+    <div class="oh-modal__dialog oh-modal__dialog--lg">
+        <div class="oh-modal__dialog-header">
+            <h2 class="oh-modal__dialog-title">{% trans "Créer une configuration IA" %}</h2>
+            <button class="oh-modal__close" aria-label="Close">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <div class="oh-modal__dialog-body" id="aiConfigForm"></div>
+    </div>
+</div>
+
+{% endblock settings %}

@@ -1,0 +1,156 @@
+{% extends 'index.html' %}
+{% block content %}
+{% load static %}
+{% load i18n %}
+
+{% include 'candidate/interview_nav.html' %}
+
+<div class="oh-wrapper">
+  <!-- Tabs navigation -->
+  <div class="oh-tabs-container">
+    <button 
+      class="oh-tab-button {% if view_type != 'calendar' %}active{% endif %}" 
+      onclick="switchView('list')" 
+      id="listTab"
+    >
+      <ion-icon name="list-outline"></ion-icon>
+      {% trans "List View" %}
+    </button>
+    <button 
+      class="oh-tab-button {% if view_type == 'calendar' %}active{% endif %}" 
+      onclick="switchView('calendar')" 
+      id="calendarTab"
+    >
+      <ion-icon name="calendar-outline"></ion-icon>
+      {% trans "Calendar View" %}
+    </button>
+  </div>
+
+  <div id="viewContent">
+    {% if view_type == 'calendar' %}
+      {% include 'candidate/interview_calendar.html' %}
+    {% else %}
+      {% include 'candidate/interview_list.html' %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal pour les détails -->
+<div class="oh-modal" id="interviewDetailModal">
+  <div class="oh-modal__dialog">
+    <div class="oh-modal__content">
+      <div class="oh-modal__header">
+        <!-- <h5 class="oh-modal__title">{% trans "Interview Details" %}</h5> -->
+        <button type="button" class="oh-modal__close" onclick="closeModal()">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+      <div class="oh-modal__body" id="interviewDetailContent"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.oh-tabs-container {
+  display: flex;
+  justify-content: center;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 50px;
+  width: fit-content;
+  margin: 0 auto 2rem auto;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.oh-tab-button {
+  padding: 10px 30px;
+  border: none;
+  background: none;
+  border-radius: 25px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oh-tab-button.active {
+  background: #4361ee;
+  color: white;
+  box-shadow: 0 2px 10px rgba(67, 97, 238, 0.3);
+}
+
+.oh-tab-button:not(.active):hover {
+  background: rgba(67, 97, 238, 0.1);
+}
+
+.oh-tab-button ion-icon {
+  vertical-align: middle;
+  margin-right: 5px;
+  font-size: 18px;
+}
+
+#viewContent {
+  min-height: 500px;
+  transition: opacity 0.3s ease;
+}
+
+.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+</style>
+
+<script>
+function switchView(view) {
+  const content = document.getElementById('viewContent');
+  content.classList.add('loading');
+  window.location.href = `{% url 'interview-view' %}?view_type=${view}`;
+}
+
+function closeModal() {
+  document.getElementById('interviewDetailModal').classList.remove('oh-modal--show');
+}
+
+function showInterviewDetails(interviewId) {
+  const modalContent = document.getElementById('interviewDetailContent');
+  modalContent.innerHTML = `
+    <div class="text-center p-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('interviewDetailModal').classList.add('oh-modal--show');
+  
+  fetch(`/recruitment/interview/${interviewId}/details/`)
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to load interview details');
+      return response.text();
+    })
+    .then(html => {
+      modalContent.innerHTML = html;
+    })
+    .catch(error => {
+      modalContent.innerHTML = `
+        <div class="alert alert-danger m-3">
+          ${error.message}
+        </div>
+      `;
+    });
+}
+
+// Initialiser le calendrier si on est en vue calendrier
+document.addEventListener('DOMContentLoaded', function() {
+  if ('{{ view_type }}' === 'calendar') {
+    if (typeof initCalendar === 'function') {
+      initCalendar();
+    }
+  }
+});
+</script>
+
+{% endblock %}

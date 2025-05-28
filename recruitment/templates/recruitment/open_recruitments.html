@@ -1,0 +1,387 @@
+{% load i18n %}
+{% load static %}
+{% load recruitmentfilters %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{white_label_company_name}}{% trans " - Open Recruitments" %}</title>
+        <link rel="apple-touch-icon" sizes="180x180" href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/apple-touch-icon.png' %}{% endif %}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/favicon-32x32.png' %}{% endif %}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/favicon-16x16.png' %}{% endif %}">
+        <link rel="stylesheet" href="{% static '/build/css/style.min.css' %}" />
+        <link rel="stylesheet" href="{% static '/css/open_recruitments.css' %}" />
+        
+    </head>
+    <body>
+        <div class="top-language-selector">
+            <div class="language-switcher">
+                <a href="{% url 'set_public_language' 'fr' %}?next={{ request.path }}" class="lang-option {% if LANGUAGE_CODE == 'fr' %}active{% endif %}">FR</a>
+                <span class="lang-divider">|</span>
+                <a href="{% url 'set_public_language' 'en' %}?next={{ request.path }}" class="lang-option {% if LANGUAGE_CODE == 'en' %}active{% endif %}">EN</a>
+            </div>
+        </div>
+        <div id="main">
+
+            <!-- Hero Banner Section -->
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <h1 class="hero-title">{% trans "Find Your Next Career Opportunity" %}</h1>
+                    <p class="hero-description">
+                        {% trans "Join our team and be part of a dynamic workplace where your talents make a real impact. Discover exciting opportunities that match your skills and aspirations." %}
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">{{recruitments|length}}</div>
+                            <div class="stat-label">{% trans "Open Positions" %}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">7+ </div>
+                            <div class="stat-label">{% trans "Compagnie" %}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-container">
+                <div class="search-bar">
+                    <input type="text" 
+                           class="search-input" 
+                           placeholder="{% trans 'Search for jobs, keywords, or companies...' %}" />
+                    <button class="search-button">
+                        <ion-icon name="search-outline" class="me-2"></ion-icon>
+                        {% trans "Search" %}
+                    </button>
+                </div>
+            </div>
+            <div class="filter-section">
+                <div class="filter-container">
+                    <div class="active-filters">
+                        <div class="filter-chip">
+                            <ion-icon name="business-outline"></ion-icon>
+                            {% trans "All Companies" %}
+                        </div>
+                        <div class="filter-chip">
+                            <ion-icon name="time-outline"></ion-icon>
+                            {% trans "All Time" %}
+                        </div>
+                        <div class="filter-chip">
+                            <ion-icon name="location-outline"></ion-icon>
+                            {% trans "All Locations" %}
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <a href="{% url 'candidate_portal:login' %}" class="track-status-button">
+                            <ion-icon name="analytics-outline"></ion-icon>
+                            {% trans "Track Status" %}
+                        </a>
+                        <button class="filter-button">
+                            <ion-icon name="funnel-outline"></ion-icon>
+                            {% trans "Filters" %}
+                        </button>
+                        <select class="sort-select">
+                            <option value="recent">{% trans "Most Recent" %}</option>
+                            <option value="relevant">{% trans "Most Relevant" %}</option>
+                        </select>
+                    </div>
+                </div>
+  
+            </div>
+
+            <!-- Main Content -->
+            <main class="oh-onboarding">
+                <div class="oh-job__page-container">
+                    {% if recruitments|length > 0 %}
+
+                    <!-- Job Listings Grid -->
+                    <div class="oh-layout--grid-3 oh-jobs__container--list pt-3">
+                        {% for recruitment in recruitments %}
+                        <div class="job-card" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:1|stringformat:'d00' }}">
+                            <div class="job-card__header">
+                                <div class="company-info">
+                                    <div class="company-logo">
+                                        <img src="{{recruitment.company_id.icon.url}}" alt="{{recruitment.company_id}}" />
+                                    </div>
+                                    <div class="company-details">
+                                        <h3 class="company-name">{{recruitment.company_id}}</h3>
+                                        <div class="post-time">
+                                            <ion-icon name="time-outline"></ion-icon>
+                                            <span>{{recruitment.created_at|timesince}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="job-type-badge 
+                                    {% if recruitment.recruitment_type == 'INTERNAL' %}internal
+                                    {% elif recruitment.recruitment_type == 'EXTERNAL' %}external
+                                    {% else %}both{% endif %}">
+                                    {% if recruitment.recruitment_type == 'INTERNAL' %}
+                                        <ion-icon name="business-outline"></ion-icon>
+                                        {% trans "Internal" %}
+                                    {% elif recruitment.recruitment_type == 'EXTERNAL' %}
+                                        <ion-icon name="globe-outline"></ion-icon>
+                                        {% trans "External" %}
+                                    {% else %}
+                                        <ion-icon name="people-outline"></ion-icon>
+                                        {% trans "Int/Ext" %}
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="job-card__body">
+                                <h2 class="job-title">{{recruitment.title}}</h2>
+                                <div class="job-tags">
+                                    {% for job_position in recruitment.open_positions.all %}
+                                    <span class="job-tag">{{job_position.job_position}}</span>
+                                    {% endfor %}
+                                </div>
+
+                                {% if perms.recruitment.view_recruitment %}
+                                <div class="application-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {{recruitment.candidate.all|length|percentage:recruitment.vacancy}}%"></div>
+                                    </div>
+                                    <div class="progress-stats">
+                                        <span>{{recruitment.candidate.all|length}} {% trans "Applied" %}</span>
+                                        <span>{% trans "of" %}</span>
+                                        <span>{{recruitment.vacancy}} {% trans "Capacity" %}</span>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="job-meta">
+                                    <div class="meta-item">
+                                        <ion-icon name="calendar-outline"></ion-icon>
+                                        <span>{{recruitment.start_date}} - {{recruitment.end_date}}</span>
+                                    </div>
+                                    {% if recruitment.vacancy %}
+                                    <div class="meta-item">
+                                        <ion-icon name="people-outline"></ion-icon>
+                                        <span>{% trans "Total vacancies" %} {{recruitment.vacancy}}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="job-card__footer">
+                                <button class="details-button" data-toggle="oh-modal-toggle"
+                                        data-target="#jobDetailModal" 
+                                        hx-get='{% url "recruitment-details" recruitment.id %}'
+                                        hx-target="#detailTarget">
+                                    <ion-icon name="information-circle-outline"></ion-icon>
+                                    {% trans "Details" %}
+                                </button>
+                                <a href="{% url 'application-form' %}?recruitmentId={{recruitment.id}}"
+                                   class="apply-button" target="_blank">
+                                    <ion-icon name="paper-plane-outline"></ion-icon>
+                                    {% trans "Apply Now" %}
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <!-- État vide - Aucune offre disponible -->
+                    <div class="empty-state">
+                        <div class="empty-state-container">
+                            <img src="{% static 'images/ui/no-results.png' %}" alt="{% trans 'No open positions' %}" class="empty-state-image">
+                            <h3 class="empty-state-title">{% trans "No open positions available at the moment" %}</h3>
+                            <p class="empty-state-text">{% trans "Please check back later for new opportunities" %}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </main>
+
+            <!-- Job Detail Modal -->
+            <div class="oh-modal" id="jobDetailModal" role="dialog" aria-labelledby="jobDetailModal" aria-hidden="true">
+                <div class="job-detail-modal">
+                    <button class="modal-close" aria-label="Close" onclick="closeJobModal()">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                    <div class="job-detail-content" id="detailTarget">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+
+<script src="{% static 'htmx/htmx.min.js' %}"></script>
+        <script src="{% static "build/js/web.frontend.min.js" %}"></script>
+        <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+        <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // HTMX CSRF Token Setup
+                document.body.addEventListener('htmx:configRequest', (event) => {
+                    event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+                });
+
+                // Initialize AOS animations
+                AOS.init({
+                    duration: 800,
+                    once: true
+                });
+
+                // Search functionality
+                const searchInput = document.querySelector('.search-input');
+                const jobCards = document.querySelectorAll('.job-card');
+                
+                searchInput.addEventListener('input', debounce(function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    
+                    jobCards.forEach(card => {
+                        const title = card.querySelector('.job-title').textContent.toLowerCase();
+                        const company = card.querySelector('.company-name').textContent.toLowerCase();
+                        const tags = Array.from(card.querySelectorAll('.job-tag'))
+                            .map(tag => tag.textContent.toLowerCase());
+                        
+                        const shouldShow = title.includes(searchTerm) || 
+                                         company.includes(searchTerm) ||
+                                         tags.some(tag => tag.includes(searchTerm));
+                        
+                        if (shouldShow) {
+                            card.style.display = 'flex';
+                            card.style.animation = 'fadeIn 0.5s ease forwards';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                }, 300));
+
+                // Filters functionality
+                const filterButton = document.querySelector('.filter-button');
+                let activeFilters = new Set();
+
+                filterButton.addEventListener('click', function() {
+                    showFilterModal();
+                });
+
+                function showFilterModal() {
+                    const modal = document.createElement('div');
+                    modal.className = 'filter-modal';
+                    modal.innerHTML = `
+                        <div class="filter-modal-content">
+                            <div class="filter-modal-header">
+                                <h3>{% trans "Filter Jobs" %}</h3>
+                                <button class="modal-close">
+                                    <ion-icon name="close-outline"></ion-icon>
+                                </button>
+                            </div>
+                            <div class="filter-modal-body">
+                                <div class="filter-group">
+                                    <h4>{% trans "Job Type" %}</h4>
+                                    <label class="filter-checkbox">
+                                        <input type="checkbox" value="internal"> {% trans "Internal" %}
+                                    </label>
+                                    <label class="filter-checkbox">
+                                        <input type="checkbox" value="external"> {% trans "External" %}
+                                    </label>
+                                </div>
+                                <div class="filter-group">
+                                    <h4>{% trans "Date Posted" %}</h4>
+                                    <label class="filter-checkbox">
+                                        <input type="checkbox" value="today"> {% trans "Today" %}
+                                    </label>
+                                    <label class="filter-checkbox">
+                                        <input type="checkbox" value="week"> {% trans "This Week" %}
+                                    </label>
+                                    <label class="filter-checkbox">
+                                        <input type="checkbox" value="month"> {% trans "This Month" %}
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="filter-modal-footer">
+                                <button class="apply-filters-btn">{% trans "Apply Filters" %}</button>
+                                <button class="clear-filters-btn">{% trans "Clear All" %}</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+
+                    // Animation
+                    requestAnimationFrame(() => {
+                        modal.style.opacity = '1';
+                        modal.querySelector('.filter-modal-content').style.transform = 'translateY(0)';
+                    });
+
+                    // Close modal handlers
+                    const closeBtn = modal.querySelector('.modal-close');
+                    closeBtn.addEventListener('click', () => closeFilterModal(modal));
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) closeFilterModal(modal);
+                    });
+                }
+
+                function closeFilterModal(modal) {
+                    modal.style.opacity = '0';
+                    modal.querySelector('.filter-modal-content').style.transform = 'translateY(20px)';
+                    setTimeout(() => modal.remove(), 300);
+                }
+
+                // Back to top button
+                const backToTop = document.createElement('button');
+                backToTop.className = 'back-to-top';
+                backToTop.innerHTML = '<ion-icon name="arrow-up-outline"></ion-icon>';
+                document.body.appendChild(backToTop);
+
+                window.addEventListener('scroll', () => {
+                    if (window.scrollY > 500) {
+                        backToTop.classList.add('show');
+                    } else {
+                        backToTop.classList.remove('show');
+                    }
+                });
+
+                backToTop.addEventListener('click', () => {
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
+
+                // Helper function for debouncing
+                function debounce(func, wait) {
+                    let timeout;
+                    return function executedFunction(...args) {
+                        const later = () => {
+                            clearTimeout(timeout);
+                            func(...args);
+                        };
+                        clearTimeout(timeout);
+                        timeout = setTimeout(later, wait);
+                    };
+                }
+            });
+             // Fonction pour fermer le modal
+    function closeJobModal() {
+        const modal = document.getElementById('jobDetailModal');
+        modal.classList.remove('oh-modal--show');
+    }
+
+    // Écouteur pour fermer avec la touche Escape
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeJobModal();
+        }
+    });
+
+    // Fermer en cliquant en dehors du modal
+    document.getElementById('jobDetailModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeJobModal();
+        }
+    });
+
+    // Empêcher la propagation du clic depuis le contenu du modal
+    document.querySelector('.job-detail-modal').addEventListener('click', function(event) {
+        event.stopPropagation();
+    });
+        </script>
+    </body>
+</html>

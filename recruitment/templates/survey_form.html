@@ -1,0 +1,463 @@
+{% load i18n %}{% load widget_tweaks %} {% load attendancefilters %}
+{% load static %}
+
+<style>
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #3b82f6;
+    --success-color: #059669;
+    --danger-color: #dc2626;
+}
+
+.oh-survey-ques {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.oh-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.oh-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.oh-label--question {
+    font-size: 1.1rem;
+    color: #1f2937;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.text-danger {
+    font-size: 0.875rem;
+    background-color: rgba(220, 38, 38, 0.1);
+    color: var(--danger-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+}
+
+.oh-input {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.oh-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    transform: translateY(-1px);
+}
+
+.oh-select {
+    height: 48px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+/* File Upload Styling */
+input[type="file"] {
+    position: relative;
+    padding: 2rem;
+    background: #f9fafb;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+input[type="file"]:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+input[type="file"]::before {
+    content: 'Click to upload or drag and drop';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+/* Rating Styling */
+.rating-container {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 0;
+}
+
+.rating-star {
+    font-size: 1.5rem;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.rating-star.active {
+    color: #fbbf24;
+}
+
+/* Checkbox/Radio Styling */
+.oh-input-picker-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.oh-input-picker {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.oh-input-picker:hover {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.oh-input-picker--selected {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: var(--primary-color);
+}
+
+.oh-input-picker span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4b5563;
+}
+
+.oh-input-picker input {
+    position: absolute;
+    opacity: 0;
+}
+
+/* Percentage Input */
+.oh-container--outline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.oh-input--small {
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Submit Button */
+.oh-btn--secondary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.oh-btn--secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* Animation delays for cards */
+.oh-card:nth-child(even) {
+    animation-delay: 0.2s;
+}
+
+.oh-card:nth-child(odd) {
+    animation-delay: 0.1s;
+}
+
+/* Select2 Customization */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    height: 48px;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    padding: 2px 8px;
+}
+
+@media (max-width: 768px) {
+    .oh-card {
+        padding: 1rem;
+    }
+    
+    .oh-input-picker-group {
+        flex-wrap: wrap;
+    }
+    
+    .oh-btn--w-100-resp {
+        width: 100%;
+    }
+}
+</style>
+
+<div class="oh-general__tab-target" id="personal">
+  <div class="oh-wrapper oh-survey-ques">
+    <div class="row pb-5">
+      <div class="col-12">{{form.non_field_errors}}</div>
+
+      {% for question in questions %}
+
+      {% if question.type == "textarea" %}
+      <div class="d-flex oh-card mt-2">
+        {% if question.is_mandatory %}
+          <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+        {% else %}
+          <span class="oh-label oh-label--question">{{ question.question }}</span>
+        {% endif %}
+        <textarea
+          type="text"
+          name="{{question.question}}"
+          class="oh-input w-100"
+          id="id_{{qgvuestion.id}}"
+          {% if question.is_mandatory %}required{% endif %}
+        ></textarea>
+      </div>
+      {% elif question.type == "options" %}
+        <div class="d-block oh-card">
+          {% if question.is_mandatory %}
+            <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+          {% else %}
+            <span class="oh-label oh-label--question">{{ question.question }}</span>
+          {% endif %}
+          <select
+            name="{{question.question}}"
+            class="oh-select oh-select-2--large oh-select-2 w-100 select2-hidden-accessible"
+            id="id_{{question.id}}"
+            data-select2-id="select2-data-id_employee_id1"
+            aria-hidden="true"
+            {% if question.is_mandatory %}required{% endif %}
+          >
+            <option value="">-------------------------</option>
+            {% for choice in question.choices %}
+            <option value="{{choice}}">{{choice}}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% elif question.type == "multiple" %}
+            <div class="d-block oh-card">
+              {% if question.is_mandatory %}
+                <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+              {% else %}
+                <span class="oh-label oh-label--question">{{ question.question }}</span>
+              {% endif %}
+              <select
+                  name="multiple_choices_{{ question.question }}"
+                  class="oh-select oh-select-2--large oh-select-2 w-100 select2-hidden-accessible"
+                  style="height: 55px"
+                  id="id_{{ question.id }}"
+                  {% if question.is_mandatory %}required{% endif %}
+                  multiple>
+                  {% for choice in question.choices %}
+                  <option value="{{ choice }}">{{ choice }}</option>
+                  {% endfor %}
+              </select>
+            </div>
+            {% elif question.type == "percentage" %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                <div class="oh-container oh-container--outline my-2">
+                  {% comment %} <input class="oh-input oh-input--small oh-input--block px-0" min="0" value="$3.00" > {% endcomment %}
+                  <input
+                  type="number"
+                  class="oh-input oh-input oh-input--small oh-input--block px-0"
+                  style="width: 70px; text-align: center;"
+                  min="0"
+                  value="0"
+                  max="100"
+                  name="percentage_{{question.question}}"
+                  id="id_{{question.id}}"
+                  {% if question.is_mandatory %}required{% endif %}
+                />
+                  <input
+                  type="text"
+                  class="oh-input w-25 oh-input oh-input--small oh-input--block px-0"
+                  value="%"
+                  readonly
+                />
+                </div>
+              </div>
+            {% elif question.type == "file" %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                <input
+                  type="file"
+                  class="oh-input w-100"
+                  name="file_{{question.question}}"
+                  id="id_{{question.id}}"
+                  {% if question.is_mandatory %}required{% endif %}
+                />
+              </div>
+            {% elif question.type == "date" %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                <input
+                  type="date"
+                  class="oh-input w-100"
+                  name="date_{{question.question}}"
+                  id="id_{{question.id}}"
+                  {% if question.is_mandatory %}required{% endif %}
+                />
+              </div>
+            {% elif question.type == "rating" %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                {% include "rating_input.html" %}
+              </div>
+            {% elif question.type == "checkbox" %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                <div class="oh-input-picker-group">
+                  <div class="oh-input-picker oh-input-picker--sm oh-input-picker--selected" style="width: 80px;">
+                    <span>
+                      <ion-icon name="checkmark-circle-outline"></ion-icon>
+                      Yes
+                    </span>
+                    <input type="radio" name="{{ question.question }}" value="Yes" selected>
+                  </div>
+                  <div class="oh-input-picker oh-input-picker--sm" style="width: 80px;">
+                    <span>
+                    <ion-icon name="close-circle-outline"></ion-icon>
+                    No
+                    </span>
+                    <input type="radio" name="{{ question.question }}" value="No">
+                  </div>
+                </div>
+
+              </div>
+            {% else %}
+              <div class="d-block oh-card">
+                {% if question.is_mandatory %}
+                  <span class="oh-label oh-label--question">{{ question.question }}<span class='text-danger'> * {% trans "Mandatory Question" %}</span></span>
+                {% else %}
+                  <span class="oh-label oh-label--question">{{ question.question }}</span>
+                {% endif %}
+                <input
+                  type="{{question.type}}"
+                  class="oh-input w-100"
+                  name="{{question.question}}"
+                  id="id_{{question.id}}"
+                  {% if question.is_mandatory %}required{% endif %}
+                />
+
+              </div>
+            {% endif %} {% endfor %}
+          </div>
+          <div class="d-flex justify-content-end align-items-center w-100 mt-4">
+            <button type="submit" class="oh-btn oh-btn--secondary oh-btn--w-100-resp">
+              {% trans "Save" %}
+            </button>
+          </div>
+          <div class="col-sm-12 col-md-12 col-lg-12">
+            <p class="small text-muted text-center">
+              &copy; {% now 'Y' %} {{white_label_company_name}}. All rights resevered.
+            </p>
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      // Animation progressive des questions
+      const cards = document.querySelectorAll('.oh-card');
+      cards.forEach((card, index) => {
+          card.style.animationDelay = `${index * 0.1}s`;
+      });
+  
+      // Amélioration des inputs file
+      const fileInputs = document.querySelectorAll('input[type="file"]');
+      fileInputs.forEach(input => {
+          input.addEventListener('change', function() {
+              if (this.files.length > 0) {
+                  const fileName = this.files[0].name;
+                  this.style.color = 'transparent';
+                  this.style.border = '2px solid var(--success-color)';
+                  this.style.background = 'rgba(5, 150, 105, 0.1)';
+              }
+          });
+      });
+  
+      // Amélioration des selects multiples
+      const multiSelects = document.querySelectorAll('select[multiple]');
+      multiSelects.forEach(select => {
+          $(select).select2({
+              placeholder: "{% trans 'Select options' %}",
+              allowClear: true,
+              theme: "default"
+          });
+      });
+  
+      // Validation en temps réel
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+          input.addEventListener('invalid', function(e) {
+              e.preventDefault();
+              this.classList.add('error');
+          });
+  
+          input.addEventListener('input', function() {
+              if (this.classList.contains('error')) {
+                  this.classList.remove('error');
+              }
+          });
+      });
+  });
+  </script>

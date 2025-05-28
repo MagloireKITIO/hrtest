@@ -1,0 +1,92 @@
+{% extends 'settings.html' %}
+{% load i18n %}
+{% block settings %}
+<div class="oh-inner-sidebar-content">
+  {% if perms.base.view_jobposition %}
+    <div class="oh-inner-sidebar-content__header d-flex justify-content-between align-items-center">
+      <h2 class="oh-inner-sidebar-content__title">{% trans "Job Position" %}</h2>
+      {% if perms.base.add_jobposition %}
+        <button class="oh-btn oh-btn--secondary oh-btn--shadow"
+                data-toggle="oh-modal-toggle"
+                data-target="#jobPositionModal"
+                hx-get="{% url 'job-position-creation' %}"
+                hx-target="#jobPositionForm">
+          <ion-icon name="add-outline" class="me-1"></ion-icon>
+          {% trans "Create" %}
+        </button>
+      {% endif %}
+    </div>
+
+    <div class="oh-accordion-meta">
+		{% for company, departments in jobs_by_department.items %}
+		<div class="oh-accordion-meta__item" x-data="{ open: false }">
+			<div class="oh-accordion-meta__header" style="background-color: #f8f9fa;">
+			  <span class="oh-accordion-meta__title" >{{ company.company }}</span>
+			</div>
+			
+			<div class="oh-accordion-meta__body">
+			  {% for department, positions in departments.items %}
+			  <div class="oh-accordion-meta__item" x-data="{ open: false }">
+				  <div class="oh-accordion-meta__header d-flex justify-content-between align-items-center" style="background-color: #e9ecef;">
+					<span class="oh-accordion-meta__title" >{{ department.department }}</span>
+					{% if perms.base.add_jobposition %}
+					  <button class="oh-btn oh-btn--secondary" style="padding: 0.25rem 0.5rem;"
+							  hx-get="{% url 'job-position-creation' %}?department={{ department.id }}"
+							  hx-target="#jobPositionForm"
+							  data-toggle="oh-modal-toggle"
+							  data-target="#jobPositionModal">
+						<ion-icon name="add-outline" class="me-1"></ion-icon>
+						{% trans "Create" %}
+					  </button>
+					{% endif %}
+				  </div>
+				  
+				  <div class="oh-accordion-meta__body">
+					<div class="oh-sticky-table">
+					  <div class="oh-sticky-table__table">
+						<div class="oh-sticky-table__tbody">
+						  {% for position in positions %}
+							<div class="oh-sticky-table__tr" style="background-color: #ffffff;">
+							  <div class="oh-sticky-table__td" >{{ position.job_position }}</div>
+							  <div class="oh-sticky-table__td">
+								<div class="oh-btn-group">
+								  {% if perms.base.change_jobposition %}
+									<button class="oh-btn oh-btn--light-bkg w-50"
+											hx-get="{% url 'job-position-update' position.id %}"
+											hx-target="#jobPositionForm"
+											data-toggle="oh-modal-toggle"
+											data-target="#jobPositionModal">
+									  <ion-icon name="create-outline"></ion-icon>
+									</button>
+								  {% endif %}
+								  
+								  {% if perms.base.delete_jobposition %}
+								  <button class="oh-btn oh-btn--danger-outline w-50"
+										  hx-confirm="{% trans 'Are you sure you want to delete this position?' %}"
+										  hx-post="{% url 'job-position-delete' position.id %}"
+										  hx-target="body">
+									  <ion-icon name="trash-outline"></ion-icon>
+								  </button>
+							  {% endif %}
+								</div>
+							  </div>
+							</div>
+						  {% endfor %}
+						</div>
+					  </div>
+					</div>
+				  </div>
+				</div>
+			  {% endfor %}
+			</div>
+		  </div>
+		{% endfor %}
+	  </div>
+
+  {% endif %}
+</div>
+
+<div class="oh-modal" id="jobPositionModal">
+  <div class="oh-modal__dialog" id="jobPositionForm"></div>
+</div>
+{% endblock %}

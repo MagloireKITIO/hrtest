@@ -1,0 +1,771 @@
+{% extends 'settings.html' %} 
+{% load i18n %} 
+{% load static %} 
+
+{% block settings %}
+<style>
+  .oh-tabs {
+      margin-bottom: 1.5rem;
+  }
+  
+  .oh-tabs__tablist-container {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid #dee2e6;
+  }
+  
+  .oh-tabs__tablist-wrapper {
+      display: flex;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      width: calc(100% - 80px);
+      margin: 0 auto;
+  }
+  
+  .oh-tabs__tablist {
+      display: flex;
+      flex-wrap: nowrap;
+      margin-bottom: 0;
+      transition: transform 0.3s;
+  }
+  
+  .oh-tabs__tab {
+      padding: 0.75rem 1.25rem;
+      background-color: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-right: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      white-space: nowrap;
+      color: #6c757d;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+  }
+  
+  .oh-tabs__tab:hover {
+      color: #FF820D;
+  }
+  
+  .oh-tabs__tab--active {
+      color: #FF820D;
+      border-bottom: 2px solid #FF820D;
+  }
+  
+  .oh-tabs__panels {
+      padding: 1.5rem;
+  }
+  
+  .oh-tabs__panel {
+      display: none;
+  }
+  
+  .oh-tabs__panel--active {
+      display: block;
+  }
+  
+  .oh-tabs__control {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+  }
+  
+  .oh-tabs__control--left {
+      left: 0;
+      margin-left: 1rem;
+  }
+  
+  .oh-tabs__control--right {
+      right: 0;
+      margin-right: 1rem;
+  }
+  
+  .oh-tabs__control--more {
+      right: 40px;
+  }
+  
+  .oh-tabs__control:hover {
+      background-color: #e9ecef;
+  }
+  
+  .oh-tabs__dropdown {
+      position: absolute;
+      right: 40px;
+      top: 100%;
+      background-color: white;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+  }
+  
+  .oh-tabs__dropdown-item {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      white-space: nowrap;
+  }
+  
+  .oh-tabs__dropdown-item:hover {
+      background-color: #f8f9fa;
+  }
+  
+  /* Department List styles */
+  .department-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+  }
+  
+  .department-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #dee2e6;
+      transition: background-color 0.2s;
+  }
+  
+  .department-item:last-child {
+      border-bottom: none;
+  }
+  
+  .department-item:hover {
+      background-color: #f8f9fa;
+  }
+  
+  .department-name {
+      font-weight: 500;
+      flex-grow: 1;
+  }
+  
+  .department-badge {
+      margin-right: 1rem;
+  }
+  
+  .department-actions {
+      display: flex;
+      gap: 0.5rem;
+  }
+  
+  /* Position List */
+  .position-details-container {
+      max-height: 500px;
+      overflow-y: auto;
+      transition: all 0.3s ease;
+  }
+  
+  /* Responsive styling */
+  @media (max-width: 768px) {
+      .oh-tabs__tab {
+          padding: 0.5rem 0.75rem;
+          font-size: 0.9rem;
+      }
+  }
+</style>
+
+<div class="oh-inner-sidebar-content">
+  {% if perms.base.view_department %}
+  <div
+    class="oh-inner-sidebar-content__header d-flex justify-content-between align-items-center"
+  >
+    <h2 class="oh-inner-sidebar-content__title">{% trans "Department" %}</h2>
+    {% if perms.base.add_department %}
+      <button
+        class="oh-btn oh-btn--secondary oh-btn--shadow"
+        data-toggle="oh-modal-toggle"
+        data-target="#departmentModal"
+        hx-get="{% url 'department-creation' %}"
+        hx-target="#departmentForm"
+      >
+        <ion-icon name="add-outline" class="me-1"></ion-icon>
+        {% trans "Create" %}
+    </button>
+    {% endif %}
+  </div>
+  
+  {% if departments_by_company %}
+    <!-- Company Tabs Navigation -->
+    <div class="oh-card mb-4">
+      <div class="oh-tabs">
+        <div class="oh-tabs__tablist-container">
+          <!-- Left Arrow Control -->
+          <button class="oh-tabs__control oh-tabs__control--left" id="scrollLeftBtn">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+          
+          <!-- More Options Button -->
+          <button class="oh-tabs__control oh-tabs__control--more" id="moreOptionsBtn">
+            <ion-icon name="ellipsis-horizontal"></ion-icon>
+          </button>
+          
+          <!-- Company Dropdown -->
+          <div class="oh-tabs__dropdown" id="companyDropdown">
+            {% for company, departments in departments_by_company.items %}
+              <div class="oh-tabs__dropdown-item" data-company-id="{{ company.id }}">
+                {{ company.company }}
+              </div>
+            {% endfor %}
+          </div>
+          
+          <!-- Right Arrow Control -->
+          <button class="oh-tabs__control oh-tabs__control--right" id="scrollRightBtn">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </button>
+          
+          <div class="oh-tabs__tablist-wrapper">
+            <div class="oh-tabs__tablist" role="tablist" id="companyTabsList">
+              {% for company, departments in departments_by_company.items %}
+                <button 
+                  class="oh-tabs__tab {% if forloop.first %}oh-tabs__tab--active{% endif %}" 
+                  role="tab" 
+                  id="tab-{{ company.id }}" 
+                  aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" 
+                  aria-controls="tab-panel-{{ company.id }}"
+                  data-company-id="{{ company.id }}"
+                >
+                  {{ company.company }}
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tab Panels Container -->
+        <div class="oh-tabs__panels">
+          {% for company, departments in departments_by_company.items %}
+            <div 
+              class="oh-tabs__panel {% if forloop.first %}oh-tabs__panel--active{% endif %}" 
+              id="tab-panel-{{ company.id }}" 
+              role="tabpanel" 
+              aria-labelledby="tab-{{ company.id }}"
+            >
+              <!-- Department Filter -->
+              <div class="oh-input-group mb-3">
+                <input type="text" class="oh-input department-filter" placeholder="{% trans 'Filter departments...' %}" onkeyup="filterDepartments('{{ company.id }}', this.value)">
+              </div>
+              
+              <!-- Department Actions -->
+              <div class="d-flex justify-content-end mb-3">
+                <div class="oh-dropdown" x-data="{open: false}">
+                  <button class="oh-btn oh-btn--secondary" 
+                          @click="open = !open"
+                          @click.outside="open = false">
+                    {% trans "Actions" %}
+                    <ion-icon class="ms-2" name="caret-down-outline"></ion-icon>
+                  </button>
+                  <div class="oh-dropdown__menu oh-dropdown__menu--right" x-show="open">
+                    <ul class="oh-dropdown__items">
+                      <li class="oh-dropdown__item">
+                        <a hx-get="{% url 'department-creation' %}?company={{ company.id }}"
+                           hx-target="#departmentForm"
+                           data-toggle="oh-modal-toggle"
+                           data-target="#departmentModal"
+                           class="oh-dropdown__link">
+                          {% trans "Add Department" %}
+                        </a>
+                      </li>
+                      <li class="oh-dropdown__item">
+                        <a hx-get="{% url 'department-import' %}?company={{ company.id }}"
+                           hx-target="#importForm"
+                           data-toggle="oh-modal-toggle"
+                           data-target="#importModal"
+                           class="oh-dropdown__link">
+                          {% trans "Import" %}
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Department List -->
+              <div class="department-list-container">
+                <ul class="department-list" id="department-list-{{ company.id }}">
+                  {% for dep in departments %}
+                    <li class="department-item" id="departmentTr{{dep.id}}" data-department-name="{{ dep.department|lower }}">
+                      <div class="department-name">{{ dep.department }}</div>
+                      <span class="oh-badge oh-badge--primary department-badge" data-department-id="{{ dep.id }}">
+                        <span id="position-count-{{ dep.id }}">0</span> {% trans "Positions" %}
+                      </span>
+                      <div class="department-actions">
+                        <button class="oh-btn oh-btn--info-outline" 
+                                onclick="togglePositionList('{{ dep.id }}')">
+                          <ion-icon name="list-outline"></ion-icon>
+                          {% trans "View" %}
+                        </button>
+                        
+                        {% if perms.base.add_jobposition %}
+                          <button class="oh-btn oh-btn--success-outline"
+                                  hx-get="{% url 'job-position-creation' %}?department={{ dep.id }}"
+                                  hx-target="#jobPositionForm"
+                                  data-toggle="oh-modal-toggle"
+                                  data-target="#jobPositionModal">
+                            <ion-icon name="add-outline"></ion-icon>
+                          </button>
+                        {% endif %}
+                        
+                        {% if perms.base.change_department %}
+                          <a hx-get="{% url 'department-update' dep.id %}"
+                             hx-target="#departmentEditForm"
+                             data-toggle="oh-modal-toggle"
+                             data-target="#departmentEditModal"
+                             class="oh-btn oh-btn--light-bkg">
+                            <ion-icon name="create-outline"></ion-icon>
+                          </a>
+                        {% endif %}
+                        
+                        {% if perms.base.delete_department %}
+                          <form hx-confirm="{% trans 'Are you sure you want to delete this department?' %}" 
+                                hx-post="{% url 'department-delete' dep.id %}"
+                                hx-target="#departmentTr{{dep.id}}">
+                            {% csrf_token %}
+                            <button class="oh-btn oh-btn--danger-outline">
+                              <ion-icon name="trash-outline"></ion-icon>
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              
+              <!-- Positions Details Container -->
+              <div class="position-details-container mt-4" id="position-container" style="display: none;">
+                <div class="oh-card">
+                  <div class="oh-card__header d-flex justify-content-between align-items-center">
+                    <h4 class="oh-card__title mb-0" id="selected-department-name">{% trans "Department Positions" %}</h4>
+                    {% if perms.base.add_jobposition %}
+                    <button class="oh-btn oh-btn--success-outline"
+                                  hx-get="{% url 'job-position-creation' %}?department={{ dep.id }}"
+                                  hx-target="#jobPositionForm"
+                                  data-toggle="oh-modal-toggle"
+                                  data-target="#jobPositionModal">
+                            <ion-icon name="add-outline"></ion-icon>
+                          </button>
+                    {% endif %}
+                    <button class="oh-btn oh-btn--light-bkg" onclick="closePositionList()">
+                      <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                  </div>
+                  <div class="oh-card__body">
+                    <div class="oh-sticky-table">
+                      <div class="oh-sticky-table__table oh-table--sortable">
+                        <div class="oh-sticky-table__thead">
+                          <div class="oh-sticky-table__tr">
+                            <div class="oh-sticky-table__th">{% trans "Position" %}</div>
+                            {% if perms.base.change_jobposition or perms.base.delete_jobposition %}
+                              <div class="oh-sticky-table__th">{% trans "Actions" %}</div>
+                            {% endif %}
+                          </div>
+                        </div>
+                        <div class="oh-sticky-table__tbody" id="position-list">
+                          <!-- Position items will be loaded here via AJAX -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+      <img style="display: block; width: 15%; margin: 20px auto; filter: opacity(0.5);" src="{% static 'images/ui/connection.png' %}" class="" alt="Page not found. 404." />
+      <h5 class="oh-404__subtitle">{% trans "There is no department at this moment." %}</h5>
+    </div>
+  {% endif %}
+  {% endif %}
+</div>
+
+<!-- Department modals -->
+<div
+  class="oh-modal"
+  id="departmentModal"
+  role="dialog"
+  aria-labelledby="departmentModalLabel"
+  aria-hidden="true"
+>
+  <div class="oh-modal__dialog" id="departmentForm"></div>
+</div>
+
+<div
+  class="oh-modal"
+  id="departmentEditModal"
+  role="dialog"
+  aria-labelledby="departmentEditModal"
+  aria-hidden="true"
+>
+  <div class="oh-modal__dialog" id="departmentEditForm"></div>
+</div>
+
+<div id="importModal" class="oh-modal">
+  <div id="importForm" class="oh-modal__dialog"></div>
+</div>
+
+<!-- Job Position modal - matches the exact structure from job_position.html -->
+<div class="oh-modal" id="jobPositionModal">
+  <div class="oh-modal__dialog" id="jobPositionForm"></div>
+</div>
+
+<!-- JavaScript to handle interactions -->
+<script>
+  // Store the active company and department
+  // Store the active company and department
+let activeCompanyId = null;
+let activeDepartmentId = null;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Get persisted active company from sessionStorage or use first tab
+  const storedCompanyId = sessionStorage.getItem('activeCompanyId');
+  const firstTab = document.querySelector('.oh-tabs__tab');
+  
+  if (storedCompanyId) {
+    const storedTab = document.querySelector(`[data-company-id="${storedCompanyId}"]`);
+    if (storedTab) {
+      activeCompanyId = storedCompanyId;
+      selectCompanyTab(storedTab, storedCompanyId);
+    } else if (firstTab) {
+      activeCompanyId = firstTab.getAttribute('data-company-id');
+    }
+  } else if (firstTab) {
+    activeCompanyId = firstTab.getAttribute('data-company-id');
+  }
+  
+  // Setup event listeners for company tabs
+  document.querySelectorAll('.oh-tabs__tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      const companyId = this.getAttribute('data-company-id');
+      selectCompanyTab(this, companyId);
+    });
+  });
+  
+  // Setup event listeners for tab navigation controls
+  document.getElementById('scrollLeftBtn').addEventListener('click', scrollTabsLeft);
+  document.getElementById('scrollRightBtn').addEventListener('click', scrollTabsRight);
+  
+  // Fixed dropdown for companies
+  const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+  const companyDropdown = document.getElementById('companyDropdown');
+  
+  if (moreOptionsBtn && companyDropdown) {
+    // S'assurer que le dropdown a une position et un z-index corrects
+    companyDropdown.style.position = 'absolute';
+    companyDropdown.style.zIndex = '1050';
+    companyDropdown.style.backgroundColor = 'white';
+    companyDropdown.style.padding = '0.5rem 0';
+    companyDropdown.style.border = '1px solid #dee2e6';
+    companyDropdown.style.borderRadius = '0.25rem';
+    companyDropdown.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';
+    
+    moreOptionsBtn.addEventListener('click', function(e) {
+      e.stopPropagation(); // Empêcher la propagation de l'événement
+      
+      // Toggle le dropdown
+      if (companyDropdown.style.display === 'block') {
+        companyDropdown.style.display = 'none';
+      } else {
+        companyDropdown.style.display = 'block';
+        
+        // Positionner le dropdown correctement
+        const btnRect = moreOptionsBtn.getBoundingClientRect();
+        companyDropdown.style.top = (btnRect.bottom + window.scrollY) + 'px';
+        companyDropdown.style.right = '40px';
+      }
+    });
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    if (!moreOptionsBtn.contains(event.target) && !companyDropdown.contains(event.target)) {
+      companyDropdown.style.display = 'none';
+    }
+  });
+  
+  // Setup company selection from dropdown
+  document.querySelectorAll('.oh-tabs__dropdown-item').forEach(item => {
+    item.addEventListener('click', function() {
+      const companyId = this.getAttribute('data-company-id');
+      const tab = document.querySelector(`[data-company-id="${companyId}"]`);
+      if (tab) {
+        selectCompanyTab(tab, companyId);
+        scrollTabToView(tab);
+        companyDropdown.style.display = 'none';
+      }
+    });
+  });
+  
+  // Load position counts
+  loadPositionCounts();
+  
+  // Handle HTMX events
+  document.body.addEventListener('htmx:beforeSend', function(evt) {
+    // Check if the request is for opening the job position modal
+    if (evt.detail.target && evt.detail.target.id === 'jobPositionForm') {
+      // Store the active company ID to restore focus later
+      if (activeCompanyId) {
+        sessionStorage.setItem('activeCompanyId', activeCompanyId);
+      }
+    }
+  });
+  
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    // Focus will be maintained by our selectCompanyTab function
+    if (evt.detail.target && 
+        (evt.detail.target.id === 'departmentForm' || 
+         evt.detail.target.id === 'departmentEditForm' ||
+         evt.detail.target.id === 'importForm' ||
+         evt.detail.target.id === 'jobPositionForm')) {
+      
+      // Ensure modals are properly initialized
+      if (evt.detail.target.id === 'jobPositionForm') {
+        const jobModal = document.getElementById('jobPositionModal');
+        if (jobModal && !jobModal.classList.contains('oh-modal--show')) {
+          // Trigger modal display if needed
+          if (typeof $ !== 'undefined') {
+            $(jobModal).addClass('oh-modal--show');
+          } else {
+            jobModal.classList.add('oh-modal--show');
+          }
+        }
+      }
+    }
+  });
+});
+
+// Scroll tabs left
+function scrollTabsLeft() {
+  const tabsWrapper = document.querySelector('.oh-tabs__tablist-wrapper');
+  tabsWrapper.scrollBy({ left: -200, behavior: 'smooth' });
+}
+
+// Scroll tabs right
+function scrollTabsRight() {
+  const tabsWrapper = document.querySelector('.oh-tabs__tablist-wrapper');
+  tabsWrapper.scrollBy({ left: 200, behavior: 'smooth' });
+}
+
+// Scroll specific tab into view
+function scrollTabToView(tabElement) {
+  const tabsWrapper = document.querySelector('.oh-tabs__tablist-wrapper');
+  const tabRect = tabElement.getBoundingClientRect();
+  const wrapperRect = tabsWrapper.getBoundingClientRect();
+  
+  if (tabRect.left < wrapperRect.left) {
+    // Tab is to the left of visible area
+    tabsWrapper.scrollLeft += tabRect.left - wrapperRect.left - 10;
+  } else if (tabRect.right > wrapperRect.right) {
+    // Tab is to the right of visible area
+    tabsWrapper.scrollLeft += tabRect.right - wrapperRect.right + 10;
+  }
+}
+
+// Select company tab
+function selectCompanyTab(tabElement, companyId) {
+  // Update active state for tabs
+  document.querySelectorAll('.oh-tabs__tab').forEach(tab => {
+    tab.classList.remove('oh-tabs__tab--active');
+    tab.setAttribute('aria-selected', 'false');
+  });
+  tabElement.classList.add('oh-tabs__tab--active');
+  tabElement.setAttribute('aria-selected', 'true');
+  
+  // Update active state for panels
+  document.querySelectorAll('.oh-tabs__panel').forEach(panel => {
+    panel.classList.remove('oh-tabs__panel--active');
+  });
+  document.getElementById('tab-panel-' + companyId).classList.add('oh-tabs__panel--active');
+  
+  // Update active company and persist it
+  activeCompanyId = companyId;
+  sessionStorage.setItem('activeCompanyId', companyId);
+  
+  // Close position details when switching companies
+  closePositionList();
+}
+
+// Filter departments
+function filterDepartments(companyId, query) {
+  query = query.toLowerCase();
+  const departmentList = document.getElementById('department-list-' + companyId);
+  const departments = departmentList.querySelectorAll('.department-item');
+  
+  departments.forEach(dept => {
+    const deptName = dept.getAttribute('data-department-name');
+    if (deptName.includes(query)) {
+      dept.style.display = '';
+    } else {
+      dept.style.display = 'none';
+    }
+  });
+}
+
+// Toggle position list
+function togglePositionList(departmentId) {
+  activeDepartmentId = departmentId;
+  
+  // Obtenir le panneau actif
+  const activePanel = document.querySelector('.oh-tabs__panel--active');
+  
+  // Trouver le container dans le panneau actif
+  const container = activePanel.querySelector('#position-container');
+  if (!container) {
+    console.error('Position container not found in active panel');
+    return;
+  }
+  
+  // Trouver l'élément de département dans le panneau actif
+  const departmentElement = activePanel.querySelector(`#departmentTr${departmentId} .department-name`);
+  const departmentName = departmentElement ? departmentElement.innerText : 'Department';
+  
+  // Update department name in the header
+  const deptNameHeader = container.querySelector('#selected-department-name');
+  if (deptNameHeader) {
+    deptNameHeader.innerText = departmentName + ' - ' + 'Positions';
+  }
+  
+  // Set add position button target with the current department ID
+  const addBtn = container.querySelector('#add-position-btn');
+  if (addBtn) {
+    addBtn.setAttribute('hx-get', `{% url 'job-position-creation' %}?department=${departmentId}`);
+  }
+  
+  // Show the container
+  container.style.display = 'block';
+  
+  // Load positions
+  loadPositionsForDepartment(departmentId, activePanel);
+  
+  // Scroll to the positions container
+  container.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Close position list
+function closePositionList() {
+  // Trouver le conteneur dans le panneau actif
+  const activePanel = document.querySelector('.oh-tabs__panel--active');
+  if (activePanel) {
+    const container = activePanel.querySelector('#position-container');
+    if (container) {
+      container.style.display = 'none';
+    }
+  }
+  activeDepartmentId = null;
+}
+
+// Load position counts for all departments
+function loadPositionCounts() {
+  {% for company, departments in departments_by_company.items %}
+    {% for dep in departments %}
+      fetch(`/api/departments/{{ dep.id }}/position-count/`)
+        .then(response => response.json())
+        .then(data => {
+          const countElement = document.getElementById('position-count-{{ dep.id }}');
+          if (countElement) {
+            countElement.innerText = data.count;
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching position count:', error);
+        });
+    {% endfor %}
+  {% endfor %}
+}
+
+// Load positions for a department (version corrigée pour les formulaires)
+function loadPositionsForDepartment(departmentId) {
+  const activePanel = document.querySelector('.oh-tabs__panel--active');
+  const positionList = activePanel.querySelector('#position-list');
+  
+  if (!positionList) {
+    console.error('Position list container not found');
+    return;
+  }
+  
+  positionList.innerHTML = '<div class="oh-sticky-table__tr"><div class="oh-sticky-table__td text-center">Loading...</div></div>';
+  
+  fetch(`/api/departments/${departmentId}/positions/`)
+    .then(response => response.json())
+    .then(positions => {
+      positionList.innerHTML = '';
+      if (positions.length === 0) {
+        positionList.innerHTML = '<div class="oh-sticky-table__tr"><div class="oh-sticky-table__td text-center">No positions found</div></div>';
+        return;
+      }
+      
+      positions.forEach(pos => {
+        const row = document.createElement('div');
+        row.className = 'oh-sticky-table__tr';
+        row.id = `position-${pos.id}`;
+        
+        // Création du HTML du contenu principal
+        const contentHTML = `<div class="oh-sticky-table__td">${pos.job_position}</div>`;
+        
+        // Création du HTML pour les boutons d'action
+        let actionsHTML = `<div class="oh-sticky-table__td"><div class="oh-btn-group">`;
+        
+        // Ajout du bouton d'édition si autorisé
+        {% if perms.base.change_jobposition %}
+        const updateUrl = "{% url 'job-position-update' 0 %}".replace('0', pos.id);
+        actionsHTML += `
+          <button class="oh-btn oh-btn--light-bkg w-50"
+                  hx-get="${updateUrl}"
+                  hx-target="#jobPositionForm"
+                  data-toggle="oh-modal-toggle"
+                  data-target="#jobPositionModal">
+            <ion-icon name="create-outline"></ion-icon>
+          </button>
+        `;
+        {% endif %}
+        
+        // Ajout du bouton de suppression si autorisé
+        {% if perms.base.delete_jobposition %}
+        const deleteUrl = "{% url 'job-position-delete' 0 %}".replace('0', pos.id);
+        actionsHTML += `
+          <button class="oh-btn oh-btn--danger-outline w-50"
+                  hx-confirm="{% trans 'Are you sure you want to delete this position?' %}"
+                  hx-post="${deleteUrl}"
+                  hx-target="#position-${pos.id}">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+        `;
+        {% endif %}
+        
+        actionsHTML += `</div></div>`;
+        
+        // Assemblage du HTML complet
+        row.innerHTML = contentHTML + actionsHTML;
+        positionList.appendChild(row);
+      });
+      
+      // Réinitialiser HTMX pour les nouveaux éléments
+      if (window.htmx) {
+        htmx.process(positionList);
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching positions:', error);
+      positionList.innerHTML = '<div class="oh-sticky-table__tr"><div class="oh-sticky-table__td text-center">Error loading positions</div></div>';
+    });
+}
+</script>
+{% endblock settings %}

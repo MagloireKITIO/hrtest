@@ -1,0 +1,157 @@
+{% load static %} {% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - {{white_label_company_name}} Dashboard</title>
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/apple-touch-icon.png' %}{% endif %}">
+    <link rel="icon" type="image/png" sizes="32x32"
+        href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/favicon-32x32.png' %}{% endif %}">
+    <link rel="icon" type="image/png" sizes="16x16"
+        href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/favicon-16x16.png' %}{% endif %}">
+    <link rel="stylesheet" href="{% static '/build/css/style.min.css' %}" />
+    <link rel="manifest" href="{% static 'build/manifest.json' %}" />
+    <style>
+        body {
+            background-image: url("{% static 'images/ui/login_back.jpg' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+        animation: spin 1s linear infinite;
+    }
+    
+    .d-none {
+        display: none !important;
+    }
+        
+        
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="oh-alert-container">
+            {% for message in messages %}
+            <div class="oh-alert oh-alert--animated {{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        <main class="oh-auth">
+            <div class="oh-auth-card mb-4">
+                <h1 class="oh-onboarding-card__title oh-onboarding-card__title--h2 text-center my-3">
+                    {% trans "Sign In" %}
+                </h1>
+                <p class="text-muted text-center">
+                    {% trans "Please login to access the dashboard." %}
+                </p>
+                <form method="post" class="oh-form-group">
+                    {% csrf_token %}
+                    <div class="oh-input-group">
+                        <label class="oh-label" for="username">{% trans "Username" %}</label>
+                        <input type="text" id="username" name="username" class="oh-input w-100"
+                            placeholder="e.g. @group-activa" />
+                    </div>
+                    <div class="oh-input-group">
+                        <label class="oh-label" for="password">{% trans "Password" %}</label>
+                        <div class="oh-password-input-container">
+                            <input type="password" id="password" name="password"
+                                class="oh-input oh-input--password w-100" placeholder="Use alphanumeric characters" />
+                            <button type="button" class="oh-btn oh-btn--transparent oh-password-input--toggle">
+                                <ion-icon class="oh-passowrd-input__show-icon" title="{% trans 'Show Password' %}"
+                                    name="eye-outline"></ion-icon>
+                                <ion-icon class="oh-passowrd-input__hide-icon d-none" title="{% trans 'Hide Password' %}"
+                                    name="eye-off-outline"></ion-icon>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" 
+    class="oh-btn oh-onboarding-card__button mt-4 oh-btn--secondary oh-btn--shadow w-100 mb-4" 
+    id="loginButton"
+    role="button">
+    <ion-icon class="me-2" name="lock-closed-outline"></ion-icon>
+    <span class="button-text">{% trans "Secure Sign-in" %}</span>
+    <span class="spinner d-none">
+        <ion-icon name="reload-outline" class="loading-spinner"></ion-icon>
+        {% trans "Connexion en cours..." %}
+    </span>
+</button>
+                    {% if not initialize_database %}
+                        <small class="text-center">
+                            <a href="{% url 'forgot-password' %}" class="oh-link oh-link--secondary justify-content-center">
+                                {% trans "Forgot password" %}?
+                            </a>
+                        </small>
+                    {% endif %}
+                </form>
+                
+            </div>
+            <div>
+                <img src={% if white_label_company.icon %}
+                        "{{white_label_company.icon.url}}"
+                        alt="{{white_label_company_name}}"
+                        style=" opacity:.90; 200px; height: 140px;"
+                    {% else %}
+                        "{% static 'images/ui/auth-logo.png' %}" alt="Horilla"
+                    {% endif %}
+                />
+                {% if white_label_company %}
+                <p style=" font-size: large; color: gray; text-align: center;" class="mt-2">{{white_label_company}}</p>
+                {% endif %}
+
+            </div>
+        </main>
+    </div>
+    <script src="{% static '/build/js/web.frontend.min.js' %}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+    <script>
+        $(document).ready(function () {
+            if ($(".oh-alert--warning").length > 0) {
+                Swal.fire({
+                    title: 'Access Denied !',
+                    text: 'Your login credentials are currently blocked. Please contact HR administrators for assistance.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK',
+                });
+            }
+        });
+        // Nouveau code pour le spinner de connexion
+        $('form').on('submit', function() {
+            const button = $('#loginButton');
+            const buttonText = button.find('.button-text');
+            const spinner = button.find('.spinner');
+            const lockIcon = button.find('ion-icon[name="lock-closed-outline"]');
+            
+            // Désactiver le bouton
+            button.prop('disabled', true);
+            
+            // Cacher le texte original et l'icône
+            buttonText.addClass('d-none');
+            lockIcon.addClass('d-none');
+            
+            // Montrer le spinner
+            spinner.removeClass('d-none');
+            
+            // Le formulaire va se soumettre normalement
+            return true;
+        });
+    
+    </script>
+</body>
+
+</html>

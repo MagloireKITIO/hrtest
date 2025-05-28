@@ -1,0 +1,131 @@
+<!-- recruitment/templates/recruitment/ai_config/ai_config_test.html -->
+{% load i18n %}
+
+<form hx-post="{% url 'ai-configuration-test' config.id %}" hx-target="#aiConfigTestForm" class="oh-profile-section">
+    {% csrf_token %}
+    
+    <div class="oh-inner-sidebar-content__body">
+        <!-- Informations sur la configuration -->
+        <div class="oh-alert oh-alert--info mb-3">
+            <div class="oh-alert__content">
+                <h5>{% trans "Configuration testée" %}: {{ config.name }}</h5>
+                <p class="mb-1"><strong>{% trans "Modèle" %}:</strong> {{ config.model_name }}</p>
+                <p class="mb-0"><strong>{% trans "Température" %}:</strong> {{ config.temperature }} | <strong>{% trans "Max tokens" %}:</strong> {{ config.max_tokens }}</p>
+            </div>
+        </div>
+
+        <!-- Formulaire de test -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.test_text.name}}" class="mb-1 required-star">{% trans "Texte de CV à analyser" %}</label>
+            {{ form.test_text }}
+            {{ form.test_text.errors }}
+            <small class="oh-text--muted">{% trans "Entrez un extrait de CV ou un texte pour tester l'analyse IA" %}</small>
+        </div>
+
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.job_description.name}}" class="mb-1 required-star">{% trans "Description du poste" %}</label>
+            {{ form.job_description }}
+            {{ form.job_description.errors }}
+            <small class="oh-text--muted">{% trans "Description du poste pour contextualiser l'analyse" %}</small>
+        </div>
+
+        <!-- Résultats du test -->
+        {% if test_result %}
+        <div class="oh-input-group mb-3">
+            <label class="mb-2">{% trans "Résultat du test" %}</label>
+            
+            {% if test_result.success %}
+            <div class="oh-alert oh-alert--success">
+                <div class="oh-alert__content">
+                    <h6>✅ {% trans "Test réussi" %}</h6>
+                    
+                    {% if test_result.response.score is not None %}
+                    <div class="mb-2">
+                        <strong>{% trans "Score" %}:</strong> 
+                        <span class="oh-badge oh-badge--primary">{{ test_result.response.score }}/100</span>
+                    </div>
+                    {% endif %}
+
+                    {% if test_result.response.job_matching %}
+                    <div class="mb-2">
+                        <strong>{% trans "Pertinence" %}:</strong> 
+                        {% if test_result.response.job_matching.is_relevant %}
+                            <span class="oh-badge oh-badge--success">{% trans "Pertinent" %}</span>
+                        {% else %}
+                            <span class="oh-badge oh-badge--danger">{% trans "Non pertinent" %}</span>
+                        {% endif %}
+                        {% if test_result.response.job_matching.reason %}
+                        <br><small>{{ test_result.response.job_matching.reason }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if test_result.response.strengths %}
+                    <div class="mb-2">
+                        <strong>{% trans "Points forts" %}:</strong>
+                        <ul class="mb-0">
+                            {% for strength in test_result.response.strengths %}
+                            <li>{{ strength }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if test_result.response.areas_for_improvement %}
+                    <div class="mb-2">
+                        <strong>{% trans "Axes d'amélioration" %}:</strong>
+                        <ul class="mb-0">
+                            {% for area in test_result.response.areas_for_improvement %}
+                            <li>{{ area }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Détails techniques -->
+                    <details class="mt-3">
+                        <summary class="oh-btn oh-btn--light oh-btn--xs">{% trans "Voir la réponse complète" %}</summary>
+                        <pre class="oh-code mt-2" style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa; color: #212529; padding: 15px; border-radius: 5px; border: 1px solid #dee2e6;"><code style="color: #212529;">{{ test_result.response|pprint }}</code></pre>
+                    </details>
+                </div>
+            </div>
+            {% else %}
+            <div class="oh-alert oh-alert--danger">
+                <div class="oh-alert__content">
+                    <h6>❌ {% trans "Test échoué" %}</h6>
+                    <p><strong>{% trans "Erreur" %}:</strong> {{ test_result.error }}</p>
+                    
+                    {% if test_result.raw_response %}
+                    <details class="mt-2">
+                        <summary class="oh-btn oh-btn--light oh-btn--xs">{% trans "Voir la réponse brute" %}</summary>
+                        <pre class="oh-code mt-2" style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa; color: #212529; padding: 15px; border-radius: 5px; border: 1px solid #dee2e6;"><code style="color: #212529;">{{ test_result.raw_response }}</code></pre>
+                    </details>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="oh-modal__dialog-footer p-0 mt-3">
+        <button type="submit" class="oh-btn oh-btn--primary oh-btn--shadow">
+            <ion-icon name="flask-outline" class="me-1"></ion-icon>
+            {% trans "Lancer le test" %}
+        </button>
+    </div>
+</form>
+
+<script>
+    // Auto-redimensionnement des textareas
+    document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+        
+        // Redimensionnement initial
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    });
+</script>

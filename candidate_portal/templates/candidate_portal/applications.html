@@ -1,0 +1,428 @@
+<!-- candidate_portal/templates/candidate_portal/applications.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Mes candidatures" %} | {% trans "Espace Candidat" %}{% endblock %}
+{% block header_title %}{% trans "Mes candidatures" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .application-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    
+    .application-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .application-card__header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+    
+    .application-card__title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+    
+    .application-card__company {
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .application-card__status {
+        padding: 0.35rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        min-width: 100px;
+        text-align: center;
+    }
+    
+    .application-card__status--pending {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+    
+    .application-card__status--hired {
+        background: rgba(5, 150, 105, 0.1);
+        color: #059669;
+    }
+    
+    .application-card__status--rejected {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .application-card__status--interview {
+        background: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+    }
+    
+    .application-card__body {
+        padding: 1.5rem;
+    }
+    
+    .application-card__info {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .application-card__info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+    }
+    
+    .application-card__progress {
+        margin-bottom: 1.5rem;
+    }
+    
+    .application-card__progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+    
+    .application-card__progress-text {
+        color: #4b5563;
+        font-weight: 500;
+    }
+    
+    .application-card__progress-status {
+        color: #6b7280;
+    }
+    
+    .application-card__progress-bar {
+        height: 8px;
+        background-color: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .application-card__progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(to right, #2563eb, #3b82f6);
+        transition: width 0.3s ease;
+    }
+    
+    .application-card__footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .application-tabs {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 2rem;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .application-tabs__item {
+        padding: 1rem 1.5rem;
+        color: #6b7280;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .application-tabs__item:hover {
+        color: #4b5563;
+    }
+    
+    .application-tabs__item.active {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+    }
+    
+    .application-tabs__count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #e5e7eb;
+        color: #4b5563;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+    }
+    
+    .application-tabs__item.active .application-tabs__count {
+        background-color: #2563eb;
+        color: white;
+    }
+    
+    .no-applications {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .no-applications__icon {
+        font-size: 4rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    
+    .no-applications__title {
+        font-size: 1.5rem;
+        color: #4b5563;
+        margin-bottom: 0.5rem;
+    }
+    
+    .no-applications__description {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .application-card__header {
+            flex-direction: column;
+        }
+        
+        .application-card__status {
+            margin-top: 0.5rem;
+            align-self: flex-start;
+        }
+        
+        .application-card__info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Filter Tabs -->
+    <div class="application-tabs">
+        <div class="application-tabs__item active" data-status="all">
+            {% trans "Toutes" %}
+            <span class="application-tabs__count">{{ applications|length }}</span>
+        </div>
+        <div class="application-tabs__item" data-status="pending">
+            {% trans "En cours" %}
+            <span class="application-tabs__count">{{ applications|length }}</span>
+        </div>
+        <div class="application-tabs__item" data-status="interview">
+            {% trans "Entretien" %}
+            <span class="application-tabs__count">{{ applications|length }}</span>
+        </div>
+        <div class="application-tabs__item" data-status="hired">
+            {% trans "Acceptées" %}
+            <span class="application-tabs__count">{{ applications|length }}</span>
+        </div>
+        <div class="application-tabs__item" data-status="rejected">
+            {% trans "Refusées" %}
+            <span class="application-tabs__count">{{ applications|length }}</span>
+        </div>
+    </div>
+    
+    <!-- Applications List -->
+    {% if applications %}
+        <div id="allApplications">
+            {% for application in applications %}
+                <div class="application-card" data-status="{% if application.hired %}hired{% elif application.canceled %}rejected{% elif application.stage_id.stage_type == 'interview' %}interview{% else %}pending{% endif %}">
+                    <div class="application-card__header">
+                        <div>
+                            <h3 class="application-card__title">{{ application.job_position_id.job_position }}</h3>
+                            <div class="application-card__company">
+                                <ion-icon name="business-outline"></ion-icon>
+                                <span>{{ application.recruitment_id.company_id.company }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if application.hired %}
+                            <span class="application-card__status application-card__status--hired">{% trans "Acceptée" %}</span>
+                        {% elif application.canceled %}
+                            <span class="application-card__status application-card__status--rejected">{% trans "Refusée" %}</span>
+                        {% elif application.stage_id.stage_type == 'interview' %}
+                            <span class="application-card__status application-card__status--interview">{% trans "Entretien" %}</span>
+                        {% else %}
+                            <span class="application-card__status application-card__status--pending">{% trans "En cours" %}</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="application-card__body">
+                        <div class="application-card__info">
+                            <div class="application-card__info-item">
+                                <ion-icon name="calendar-outline"></ion-icon>
+                                <span>{% trans "Postulé le" %} {{ application.created_at|date:"d/m/Y" }}</span>
+                            </div>
+                            
+                            <div class="application-card__info-item">
+                                <ion-icon name="time-outline"></ion-icon>
+                                <span>{% trans "Dernière mise à jour" %} {{ application.last_updated|date:"d/m/Y" }}</span>
+                            </div>
+                            
+                            {% if application.schedule_date %}
+                                <div class="application-card__info-item">
+                                    <ion-icon name="calendar-number-outline"></ion-icon>
+                                    <span>{% trans "Rendez-vous prévu" %} {{ application.schedule_date|date:"d/m/Y H:i" }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="application-card__progress">
+                            <div class="application-card__progress-label">
+                                <span class="application-card__progress-text">{% trans "Progression" %}</span>
+                                <span class="application-card__progress-status">{{ application.stage_id.stage }}</span>
+                            </div>
+                            
+                            {% with total_stages=application.recruitment_id.stage_set.count current_stage=application.stage_id %}
+                                {% if current_stage %}
+                                    {% with current_index=current_stage.sequence|add:1 %}
+                                        <div class="application-card__progress-bar">
+                                            <div class="application-card__progress-fill" style="width: {% widthratio current_index total_stages 100 %}%;"></div>
+                                        </div>
+                                    {% endwith %}
+                                {% else %}
+                                    <div class="application-card__progress-bar">
+                                        <div class="application-card__progress-fill" style="width: 0%;"></div>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    
+                    <div class="application-card__footer">
+                        <a href="{% url 'candidate_portal:application_detail' application.id %}" class="oh-btn oh-btn--outline-primary oh-btn--sm">
+                            <ion-icon name="eye-outline"></ion-icon>
+                            {% trans "Voir les détails" %}
+                        </a>
+                        
+                        {% if not application.hired and not application.canceled %}
+                            <button class="oh-btn oh-btn--outline-danger oh-btn--sm" onclick="confirmWithdraw({{ application.id }})">
+                                <ion-icon name="close-outline"></ion-icon>
+                                {% trans "Retirer ma candidature" %}
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-applications">
+            <div class="no-applications__icon">
+                <ion-icon name="document-text-outline"></ion-icon>
+            </div>
+            <h3 class="no-applications__title">{% trans "Vous n'avez pas encore de candidature" %}</h3>
+            <p class="no-applications__description">{% trans "Commencez par découvrir les offres d'emploi disponibles et postuler." %}</p>
+            <a href="{% url 'candidate_portal:jobs' %}" class="oh-btn oh-btn--primary">
+                <ion-icon name="briefcase-outline"></ion-icon>
+                {% trans "Voir les offres d'emploi" %}
+            </a>
+        </div>
+    {% endif %}
+    
+    <!-- Confirmation Modal -->
+    <div class="oh-modal" id="withdrawModal">
+        <div class="oh-modal-dialog">
+            <div class="oh-modal-content">
+                <div class="oh-modal-header">
+                    <h5 class="oh-modal-title">{% trans "Confirmer le retrait" %}</h5>
+                    <button type="button" class="oh-modal-close" onclick="closeModal('withdrawModal')">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+                <div class="oh-modal-body">
+                    <p>{% trans "Êtes-vous sûr de vouloir retirer cette candidature ? Cette action est irréversible." %}</p>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('withdrawModal')">{% trans "Annuler" %}</button>
+                    <form id="withdrawForm" method="post" action="">
+                        {% csrf_token %}
+                        <button type="submit" class="oh-btn oh-btn--danger">{% trans "Confirmer le retrait" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Status filter tabs
+        const filterTabs = document.querySelectorAll('.application-tabs__item');
+        const applications = document.querySelectorAll('.application-card');
+        
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active tab
+                filterTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const status = this.getAttribute('data-status');
+                
+                // Show/hide applications based on status
+                applications.forEach(app => {
+                    if (status === 'all' || app.getAttribute('data-status') === status) {
+                        app.style.display = 'block';
+                    } else {
+                        app.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Check if we should auto-select a tab based on URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const statusParam = urlParams.get('status');
+        
+        if (statusParam) {
+            const tab = document.querySelector(`.application-tabs__item[data-status="${statusParam}"]`);
+            if (tab) {
+                tab.click();
+            }
+        }
+    });
+    
+    // Modal functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    
+    function confirmWithdraw(applicationId) {
+        // Set up the form action URL for withdrawal
+        document.getElementById('withdrawForm').action = `/candidate-portal/applications/${applicationId}/withdraw/`;
+        openModal('withdrawModal');
+    }
+</script>
+{% endblock %}

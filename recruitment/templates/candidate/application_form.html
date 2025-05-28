@@ -1,0 +1,1359 @@
+{% extends 'candidate/application_form_component.html' %} 
+{% block content %}
+{% load static %} 
+{% load i18n %} 
+{{form.load}}
+
+<style>
+    :root {
+        --primary-color: #2563eb;
+        --secondary-color: #3b82f6;
+        --accent-color: #60a5fa;
+        --success-color: #059669;
+        --danger-color: #dc2626;
+        --warning-color: #eab308;
+        --background-color: #f8fafc;
+    }
+
+    body {
+        background: var(--background-color);
+    }
+
+    /* Progress Bar */
+    .application-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: rgba(37, 99, 235, 0.1);
+        z-index: 1000;
+    }
+
+    .application-progress__bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        width: 0;
+        transition: width 0.3s ease;
+    }
+
+    /* Main Content Styling */
+    .oh-wrapper {
+        position: relative;
+        padding-top: 2rem;
+    }
+
+    .application-section {
+        margin-bottom: 2rem;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .oh-onboarding-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .oh-onboarding-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(37, 99, 235, 0.1);
+    }
+
+    .section-header__number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-weight: bold;
+    }
+
+    .section-header__title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    /* Form Controls */
+    .oh-input-group {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+
+    .oh-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #374151;
+        transition: all 0.3s ease;
+    }
+
+    .oh-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        background: #fff;
+    }
+
+    .oh-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .oh-input-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        pointer-events: none;
+    }
+
+    /* File Upload Styling */
+    .file-upload {
+        position: relative;
+        padding: 2rem;
+        border: 2px dashed #e5e7eb;
+        border-radius: 8px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .file-upload:hover {
+        border-color: var(--primary-color);
+        background: rgba(37, 99, 235, 0.02);
+    }
+
+    .file-upload__icon {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .file-upload__text {
+        color: #6b7280;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+        }
+    }
+
+    /* Timeline */
+    .recruitment-timeline {
+        position: relative;
+        padding: 2rem;
+        background: white;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+    }
+
+    .timeline-step {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .timeline-step::before {
+        content: '';
+        position: absolute;
+        top: 24px;
+        left: 12px;
+        width: 2px;
+        height: calc(100% + 1.5rem);
+        background: rgba(37, 99, 235, 0.1);
+    }
+
+    .timeline-step:last-child::before {
+        display: none;
+    }
+
+    .timeline-step__icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        z-index: 1;
+    }
+
+    .timeline-step__content {
+        flex: 1;
+    }
+
+    .timeline-step__title {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-step__description {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .oh-wrapper {
+            padding-top: 1rem;
+        }
+
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .section-header__number {
+            margin-bottom: 0.5rem;
+        }
+    }
+      /* Select2 Custom Styles */
+      .select2-container .select2-selection--single {
+        height: 48px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 48px;
+        padding-left: 1rem;
+        color: #4b5563;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 46px;
+        right: 1rem;
+    }
+
+    .select2-dropdown {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--primary-color);
+    }
+
+    /* File Upload Enhancements */
+    .file-upload {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .file-upload.dragover {
+        border-color: var(--primary-color);
+        background: rgba(37, 99, 235, 0.05);
+    }
+
+    .file-upload.error {
+        border-color: var(--danger-color);
+        background: rgba(220, 38, 38, 0.05);
+    }
+
+    .file-upload.success {
+        border-color: var(--success-color);
+        background: rgba(5, 150, 105, 0.05);
+    }
+
+    /* Form Field States */
+    .oh-input.error {
+        border-color: var(--danger-color);
+        animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .oh-input.success {
+        border-color: var(--success-color);
+    }
+
+    /* Progress Animation */
+    @keyframes progressFill {
+        from { width: 0; }
+        to { width: var(--progress-width); }
+    }
+
+    .application-progress__bar {
+        animation: progressFill 0.5s ease-out;
+    }
+
+    /* Section Transitions */
+    .section-fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: sectionFadeIn 0.6s ease forwards;
+    }
+
+    @keyframes sectionFadeIn {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Current File Preview */
+    .current-file {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .current-file:hover {
+        background: #f3f4f6;
+    }
+
+    .current-file-link:hover {
+        color: var(--secondary-color);
+    }
+
+    /* Loading States */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .loading-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    /* Required Field Indicator */
+    .required-star::after {
+        content: '*';
+        color: var(--danger-color);
+        margin-left: 4px;
+    }
+
+    /* Tooltip Styles */
+    .field-tooltip {
+        position: absolute;
+        right: -20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        cursor: help;
+    }
+
+    .tooltip-content {
+        position: absolute;
+        right: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #1f2937;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        width: max-content;
+        max-width: 200px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .field-tooltip:hover .tooltip-content {
+        opacity: 1;
+    }
+
+    .file-upload {
+    position: relative;
+    padding: 2rem;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #f9fafb;
+}
+
+.file-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+}
+
+.file-name {
+    font-weight: 500;
+    color: var(--primary-color);
+}
+.file-upload.dragover {
+    background-color: rgba(37, 99, 235, 0.05);
+    border-color: var(--primary-color);
+}
+
+.file-upload .file-preview {
+    background: rgba(37, 99, 235, 0.05);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.file-upload .file-name {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.file-upload__icon {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: none;
+}
+  /* Additional Styles */
+  .sticky-col {
+          position: sticky;
+          top: 20px;
+          height: fit-content;
+      }
+  
+      .preview-section, .job-description-section {
+          opacity: 0;
+          animation: fadeIn 0.6s ease forwards 0.3s;
+      }
+  
+      .preview-header, .job-header {
+          padding: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+      }
+  
+      .preview-controls {
+          display: flex;
+          gap: 0.5rem;
+      }
+  
+      .preview-control {
+          background: none;
+          border: none;
+          padding: 0.5rem;
+          cursor: pointer;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+      }
+  
+      .preview-control:hover {
+          background: rgba(37, 99, 235, 0.1);
+          color: var(--primary-color);
+      }
+  
+      .position-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+      }
+  
+      .position-badge.internal {
+          background: rgba(5, 150, 105, 0.1);
+          color: #059669;
+      }
+  
+      .position-badge.external {
+          background: rgba(37, 99, 235, 0.1);
+          color: var(--primary-color);
+      }
+  
+      .job-content {
+    
+    color: #4b5563;
+}
+
+.job-content img {
+    width: 100% !important;
+    height: auto;
+    display: block;
+    margin: 1rem 0;
+}
+  
+      .current-file {
+          background: #f9fafb;
+          border-radius: 8px;
+          padding: 0.75rem;
+          margin-bottom: 1rem;
+      }
+  
+      .current-file-link {
+          color: var(--primary-color);
+          text-decoration: none;
+          font-weight: 500;
+      }
+  
+      .file-input {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          opacity: 0;
+          cursor: pointer;
+      }
+  
+      .error-message {
+          display: none;
+          color: var(--danger-color);
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+      }
+  
+      .photo-upload-hint {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          color: white;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+      }
+  
+      .oh-profile-section__edit-photo:hover .photo-upload-hint {
+          opacity: 1;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 50%;
+          padding: 0.5rem;
+      }
+  
+      @media (max-width: 768px) {
+          .sticky-col {
+              position: static;
+              margin-top: 2rem;
+          }
+      }
+</style>
+
+<div class="application-progress">
+    <div class="application-progress__bar" id="progressBar"></div>
+</div>
+
+<div id="main">
+    <div class="oh-wrapper mt-5">
+        <div class="row">
+            <!-- Left Column: Application Form -->
+            <div class="col-12 col-md-6 col-lg-6">
+                <!-- Form content will go here -->
+                <div class="application-section">
+                  <div class="oh-onboarding-card oh-onboarding-card--top-bar w-100">
+                      <div class="oh-onboarding-card__container oh-onboarding-card__container--wide">
+                          <!-- Timeline Section -->
+                          <div class="recruitment-timeline mb-4">
+                              <h3 class="mb-4">{% trans "Application Process" %}</h3>
+                              <div class="timeline-step">
+                                  <div class="timeline-step__icon">
+                                      <ion-icon name="create-outline"></ion-icon>
+                                  </div>
+                                  <div class="timeline-step__content">
+                                      <div class="timeline-step__title">{% trans "Complete Application" %}</div>
+                                      <div class="timeline-step__description">{% trans "Fill in your details and upload required documents" %}</div>
+                                  </div>
+                              </div>
+                              <div class="timeline-step">
+                                  <div class="timeline-step__icon">
+                                      <ion-icon name="checkmark-outline"></ion-icon>
+                                  </div>
+                                  <div class="timeline-step__content">
+                                      <div class="timeline-step__title">{% trans "Application Review" %}</div>
+                                      <div class="timeline-step__description">{% trans "Our team will review your application" %}</div>
+                                  </div>
+                              </div>
+                              <div class="timeline-step">
+                                  <div class="timeline-step__icon">
+                                      <ion-icon name="people-outline"></ion-icon>
+                                  </div>
+                                  <div class="timeline-step__content">
+                                      <div class="timeline-step__title">{% trans "Interview Process" %}</div>
+                                      <div class="timeline-step__description">{% trans "Selected candidates will be contacted for interviews" %}</div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <form method="POST" enctype="multipart/form-data" class="application-form">
+                            {% csrf_token %}
+                              {% if messages %}
+                              <div class="oh-alert-container">
+                                  {% for message in messages %}
+                                  <div class="oh-alert oh-alert--animated {{message.tags}}">
+                                      {{ message }}
+                                  </div>
+                                  {% endfor %}
+                              </div>
+                              {% endif %}
+                              
+
+                              <!-- Personal Information Section -->
+                              <div class="section-header">
+                                  <div class="section-header__number">1</div>
+                                  <div class="section-header__title">{% trans "Personal Information" %}</div>
+                              </div>
+
+                              <!-- Profile Photo Upload Modal -->
+                              <div class="oh-modal" id="uploadPhotoModal" role="dialog" aria-labelledby="uploadPhotoModal" aria-hidden="true">
+                                  <div class="oh-modal__dialog">
+                                      <div class="oh-modal__dialog-header">
+                                          <span class="oh-modal__dialog-title" id="uploadPhotoModalLabel">
+                                              <ion-icon name="camera-outline" class="me-2"></ion-icon>
+                                              {% trans "Upload Photo" %}
+                                          </span>
+                                          <button type="button" onclick="event.stopPropagation()" class="oh-modal__close" aria-label="Close">
+                                              <ion-icon name="close-outline"></ion-icon>
+                                          </button>
+                                      </div>
+                                      <div class="oh-modal__dialog-body">
+                                          <div class="oh-profile-section__image-container">
+                                              <div class="oh-profile-section__modal-avatar">
+                                                  <img src="{% static '/images/ui/user.jpg' %}" 
+                                                       class="oh-profile-section__modal-image oh-upload-photo"
+                                                       alt="User Photo" />
+                                                  <div class="photo-upload-overlay">
+                                                      <ion-icon name="camera-outline" class="upload-icon"></ion-icon>
+                                                  </div>
+                                              </div>
+                                              <input type="file" id="photo" name="profile"
+                                                     class="oh-input oh-input--file oh-input--file-sm mt-4 oh-upload-input"
+                                                     accept=".jpg, .jpeg, .png"
+                                                     data-target=".oh-upload-photo" />
+                                              <div class="d-flex justify-content-between w-100 align-items-center mt-4">
+                                                  <button class="oh-btn oh-btn--light-danger mr-1 oh-remove-image"
+                                                          data-target=".oh-upload-photo">
+                                                      <ion-icon class="me-1" name="trash-outline"></ion-icon>
+                                                      {% trans "Delete image" %}
+                                                  </button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              <!-- Profile Photo Preview -->
+                              <div class="profile-photo-section mb-4">
+                                  <div class="oh-profile-section__edit-photo me-4 mb-3"
+                                       data-toggle="oh-modal-toggle"
+                                       data-target="#uploadPhotoModal">
+                                      <img src="{% static '/images/ui/user.jpg' %}"
+                                           class="oh-profile-section__avatar oh-upload-photo"
+                                           alt="" />
+                                      <div class="photo-upload-hint">
+                                          <ion-icon name="camera-outline"></ion-icon>
+                                          <span>{% trans "Click to upload" %}</span>
+                                      </div>
+                                  </div>
+                                  {{form.profile.errors}}
+                              </div>
+
+                              <!-- Basic Information -->
+                              <div class="row g-3">
+                                  <div class="col-12">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label" for="name">
+                                              <ion-icon name="person-outline" class="input-icon"></ion-icon>
+                                              {% trans "Name" %}
+                                          </label>
+                                          <input type="text" id="name" name="name" required
+                                                 class="oh-input w-100"
+                                                 placeholder="e.g. Jane Doe" />
+                                          {{form.name.errors}}
+                                      </div>
+                                  </div>
+
+                                  {% if not request.GET.recruitmentId %}
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label" for="recruitment">
+                                              <ion-icon name="briefcase-outline" class="input-icon"></ion-icon>
+                                              {% trans "Open Recruitment" %}
+                                          </label>
+                                          {{form.recruitment_id}}
+                                          {{form.recruitment_id.errors}}
+                                      </div>
+                                  </div>
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label" for="position">
+                                              <ion-icon name="business-outline" class="input-icon"></ion-icon>
+                                              {% trans "Choose Open Position" %}
+                                          </label>
+                                          {{form.job_position_id}}
+                                          {{form.job_position_id.errors}}
+                                      </div>
+                                  </div>
+                                  {% else %}
+                                  <input type="text" name="recruitment_id" hidden value="{{recruitment.id}}" />
+                                  <div class="col-12">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label" for="position">
+                                              <ion-icon name="business-outline" class="input-icon"></ion-icon>
+                                              {% trans "Choose Job Position" %}
+                                          </label>
+                                          <select name="job_position_id" class="oh-select oh-select2 w-100">
+                                              {% for job in recruitment.open_positions.all %}
+                                              <option value="{{job.id}}">{{job.job_position}}</option>
+                                              {% endfor %}
+                                          </select>
+                                      </div>
+                                  </div>
+                                  {% endif %}
+
+                                  <!-- Contact Information Section -->
+                                  <div class="section-header mt-4">
+                                      <div class="section-header__number">2</div>
+                                      <div class="section-header__title">{% trans "Contact Information" %}</div>
+                                  </div>
+
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label required-star" for="email">
+                                              <ion-icon name="mail-outline" class="input-icon"></ion-icon>
+                                              {% trans "Email" %}
+                                          </label>
+                                          <input type="email" id="email" name="email"
+                                                 class="oh-input w-100" required
+                                                 placeholder="e.g. @example.com" />
+                                          {{form.email.errors}}
+                                      </div>
+                                  </div>
+
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label required-star" for="phone">
+                                              <ion-icon name="call-outline" class="input-icon"></ion-icon>
+                                              {% trans "Phone" %}
+                                          </label>
+                                          <input type="text" id="phone" name="mobile"
+                                                 class="oh-input w-100"
+                                                 placeholder="+237 699xxxx00" />
+                                          {{form.mobile.errors}}
+                                      </div>
+                                  </div>
+
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label" for="portfolio">
+                                              <ion-icon name="globe-outline" class="input-icon"></ion-icon>
+                                              {% trans "Profile" %} (linkedin, portfolio ...)
+                                          </label>
+                                          <input type="text" id="portfolio" name="portfolio"
+                                                 class="oh-input w-100"
+                                                 placeholder="e.g. lien utile" />
+                                          {{form.portfolio.errors}}
+                                      </div>
+                                  </div>
+
+                                  <div class="col-md-6">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label required-star" for="gender">
+                                              <ion-icon name="people-outline" class="input-icon"></ion-icon>
+                                              {% trans "Gender" %}
+                                          </label>
+                                          {{form.gender}}
+                                          {{form.gender.errors}}
+                                      </div>
+                                  </div>
+
+                                  <!-- Documents Section -->
+                                  <div class="section-header mt-4">
+                                      <div class="section-header__number">3</div>
+                                      <div class="section-header__title">{% trans "Documents" %}</div>
+                                  </div>
+
+                                  <div class="col-12">
+                                      <div class="oh-input-group">
+                                          <label class="oh-label required-star" for="resume">
+                                              <ion-icon name="document-outline" class="input-icon"></ion-icon>
+                                              {% trans "Resume" %}
+                                          </label>
+                                          {% if resume.file %}
+                                          <div class="current-file mb-3">
+                                              <div class="d-flex align-items-center">
+                                                  <ion-icon name="document-text-outline" class="me-2"></ion-icon>
+                                                  <a href="{{ resume.file.url }}" target="_blank" class="current-file-link">
+                                                      {{ resume.file.name }}
+                                                  </a>
+                                              </div>
+                                              <input type="hidden" id="matching_resume"
+                                                     data-value="{{ resume.file.url }}"
+                                                     data-id="{{ resume.id }}"
+                                                     name="initial_resume"
+                                                     value="{{ resume.file.url }}">
+                                          </div>
+                                          {% endif %}
+
+                                          <div class="file-upload" id="resumeUpload">
+                                            <ion-icon name="cloud-upload-outline" class="file-upload__icon"></ion-icon>
+                                            <div class="file-preview" style="display: none;">
+                                                <ion-icon name="document-outline" class="me-2"></ion-icon>
+                                                <span class="file-name"></span>
+                                            </div>
+                                            <p class="file-upload__text">
+                                                {% trans "Drag and drop your resume here or" %}
+                                                <span class="text-primary">{% trans "browse" %}</span>
+                                            </p>
+                                            <input type="file" id="id_resume" name="resume"
+                                                   accept=".pdf" class="file-input"
+                                                   onchange="handleFileUpload(this, 'resume')" />
+                                        </div>
+                                          {{ form.resume.errors }}
+                                          <span id="resume-pdf-error" class="error-message"></span>
+                                      </div>
+                                  </div>
+
+                                  <div class="col-12">
+                                    <div class="oh-input-group">
+                                        <label class="oh-label" for="motivation">
+                                            <ion-icon name="mail-outline" class="input-icon"></ion-icon>
+                                            {% trans "Cover Letter" %}
+                                        </label>
+                                        {% if motivation.file %}
+                                        <div class="current-file mb-3">
+                                            <div class="d-flex align-items-center">
+                                                <ion-icon name="document-text-outline" class="me-2"></ion-icon>
+                                                <a href="{{ motivation.file.url }}" target="_blank" class="current-file-link">
+                                                    {{ motivation.file.name }}
+                                                </a>
+                                            </div>
+                                            <input type="hidden" id="matching_motivation"
+                                                   data-value="{{ motivation.file.url }}"
+                                                   data-id="{{ motivation.id }}"
+                                                   name="initial_motivation"
+                                                   value="{{ motivation.file.url }}">
+                                        </div>
+                                        {% endif %}
+                                
+                                        <div class="file-upload" id="motivationUpload">
+                                            <ion-icon name="cloud-upload-outline" class="file-upload__icon"></ion-icon>
+                                            <div class="file-preview" style="display: none;">
+                                                <ion-icon name="document-outline" class="me-2"></ion-icon>
+                                                <span class="file-name"></span>
+                                            </div>
+                                            <p class="file-upload__text">
+                                                {% trans "Drag and drop your cover letter here or" %}
+                                                <span class="text-primary">{% trans "browse" %}</span>
+                                            </p>
+                                            <input type="file" id="id_motivation" name="motivation"
+                                                   accept=".pdf" class="file-input"
+                                                   onchange="handleFileUpload(this, 'motivation')" />
+                                        </div>
+                                        {{ form.motivation.errors }}
+                                        <span id="motivation-pdf-error" class="error-message"></span>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-4">
+                                    <div class="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                                        <div class="flex items-center">
+                                            <ion-icon name="information-circle-outline" class="text-blue-500 me-2" style="font-size: 1.5rem;"></ion-icon>
+                                            <p class="text-blue-700 mb-0">
+                                                {% trans "After submitting this form, you will be redirected to a Google Form to complete additional information." %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                  <!-- Submit Button -->
+                                  <div class="col-12">
+                                    {% if is_expired %}
+                                        <button type="button"
+                                                class="oh-btn oh-btn--danger w-100 submit-button"
+                                                disabled
+                                                style="opacity: 0.7; cursor: not-allowed;">
+                                            <ion-icon name="alert-circle-outline" class="me-2"></ion-icon>
+                                            {% trans "Cette offre a expiré" %}
+                                        </button>
+                                        <p class="text-danger text-center mt-3">
+                                            <ion-icon name="time-outline" class="me-1"></ion-icon>
+                                            {% trans "Cette offre n'est plus disponible car elle a expiré le" %} {{ recruitment.end_date|date:"d/m/Y" }}
+                                        </p>
+                                    {% else %}
+                                        <button type="submit"
+                                                class="oh-btn oh-btn--secondary w-100 submit-button"
+                                                onclick="validateForm(event)">
+                                            <ion-icon name="paper-plane-outline" class="me-2"></ion-icon>
+                                            {% trans "Submit Application" %}
+                                        </button>
+                                        <p class="text-muted text-center mt-3 small">
+                                            <ion-icon name="lock-closed-outline" class="me-1"></ion-icon>
+                                            {% trans "Your information is secure and encrypted" %}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                                  </div>
+                              </form>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+  
+              <!-- Right Column: Preview/Description -->
+              <div class="col-12 col-md-6 col-lg-6 sticky-col">
+                  {% if resume %}
+                  <div class="preview-section">
+                      <div class="oh-onboarding-card oh-onboarding-card--top-bar w-100">
+                          <div class="preview-header">
+                              <h3>{% trans "Document Preview" %}</h3>
+                              <div class="preview-controls">
+                                  <button class="preview-control" onclick="window.open('{{ resume.file.url }}', '_blank')">
+                                      <ion-icon name="expand-outline"></ion-icon>
+                                  </button>
+                              </div>
+                          </div>
+                          <iframe style="width: 100%; height: 90vh; border: none; border-radius: 8px;" 
+                                  src="{{ resume.file.url }}" 
+                                  frameborder="0">
+                          </iframe>
+                      </div>
+                  </div>
+                  {% else %}
+                  <div class="job-description-section">
+                      <div class="oh-onboarding-card oh-onboarding-card--top-bar w-100">
+                          <div class="job-header">
+                              <h3>{% trans "Position Details" %}</h3>
+                              {% if recruitment.recruitment_type == 'INTERNAL' %}
+                              <span class="position-badge internal">
+                                  <ion-icon name="business-outline"></ion-icon>
+                                  {% trans "Internal Position" %}
+                              </span>
+                              {% else %}
+                              <span class="position-badge external">
+                                  <ion-icon name="globe-outline"></ion-icon>
+                                  {% trans "External Position" %}
+                              </span>
+                              {% endif %}
+                          </div>
+                          <div class="job-content">
+                              {{recruitment.description|safe}}
+                          </div>
+                      </div>
+                  </div>
+                  {% endif %}
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  <script>
+    // Fonctions utilitaires
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    function showError(field, message) {
+        const errorDiv = field.parentElement.querySelector('.error-message') || 
+                        document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        
+        if (!field.parentElement.querySelector('.error-message')) {
+            field.parentElement.appendChild(errorDiv);
+        }
+        
+        field.classList.add('error');
+    }
+    
+    function clearError(field) {
+        const errorDiv = field.parentElement.querySelector('.error-message');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+        field.classList.remove('error');
+    }
+    
+    // Gestion de la progression
+    function updateProgress() {
+        const form = document.getElementById('applicationForm');
+        if (!form) return;
+        
+        const inputs = form.querySelectorAll('input, select, textarea');
+        const totalFields = inputs.length;
+        let filledFields = 0;
+    
+        inputs.forEach(input => {
+            if (input.value) filledFields++;
+        });
+    
+        const progress = (filledFields / totalFields) * 100;
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+    }
+    
+    // Gestion des fichiers PDF
+    function validatePDFUpload(input, type) {
+        const errorMessage = document.getElementById(`${type}-pdf-error`);
+        const file = input.files[0];
+        const dropZone = document.getElementById(`${type}Upload`);
+        
+        if (file) {
+            if (!file.type.match('application/pdf')) {
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = "{% trans 'Only PDF files are accepted' %}";
+                input.value = '';
+                
+                dropZone.classList.add('error');
+                setTimeout(() => {
+                    dropZone.classList.remove('error');
+                    errorMessage.style.display = 'none';
+                }, 3000);
+                return false;
+            }
+            
+            errorMessage.style.display = 'none';
+            dropZone.classList.add('success');
+            setTimeout(() => dropZone.classList.remove('success'), 2000);
+            return true;
+        }
+        return true;
+    }
+    
+    // Validation du formulaire
+    function validateForm(event) {
+        var fileInput = document.getElementById("photo");
+        var errorList = document.getElementById("error-list");
+        var form = document.querySelector('.application-form');
+        let isValid = true;
+    
+        // Validation des champs requis
+        form.querySelectorAll('[required]').forEach(field => {
+            if (!field.value.trim()) {
+                showError(field, "{% trans 'This field is required' %}");
+                isValid = false;
+            }
+        });
+    
+        {% if not perms.recruitment.add_candidate %}
+            if (fileInput && !fileInput.value) {
+                errorList.scrollIntoView({ behavior: "smooth", block: "center" });
+                errorList.style.display = "block";
+                event.preventDefault();
+                return false;
+            } else if (errorList) {
+                errorList.style.display = "none";
+            }
+        {% endif %}
+    
+        if (!isValid) {
+            event.preventDefault();
+            showErrorMessage("{% trans 'Please fill in all required fields' %}");
+            return false;
+        }
+    
+        return true;
+    }
+    
+    // Gestion des fichiers
+    function handleFileUpload(input, type) {
+        const file = input.files[0];
+        const dropZone = document.getElementById(`${type}Upload`);
+        const preview = dropZone.querySelector('.file-preview');
+        const fileName = dropZone.querySelector('.file-name');
+        const defaultText = dropZone.querySelector('.file-upload__text');
+        const errorMessage = document.getElementById(`${type}-pdf-error`);
+    
+        if (file) {
+            if (!file.type.match('application/pdf')) {
+                dropZone.classList.add('error');
+                errorMessage.style.display = 'block';
+                errorMessage.textContent = "{% trans 'Only PDF files are accepted' %}";
+                setTimeout(() => {
+                    dropZone.classList.remove('error');
+                    errorMessage.style.display = 'none';
+                }, 3000);
+                input.value = '';
+                return;
+            }
+    
+            preview.style.display = 'flex';
+            fileName.textContent = file.name;
+            defaultText.style.display = 'none';
+            dropZone.classList.add('success');
+            errorMessage.style.display = 'none';
+            setTimeout(() => dropZone.classList.remove('success'), 2000);
+        }
+    }
+    
+    // Messages de notification
+    function showSuccessMessage(message) {
+        Swal.fire({
+            title: '{% trans "Success" %}',
+            text: message,
+            icon: 'success',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+    
+    function showErrorMessage(message) {
+        Swal.fire({
+            title: '{% trans "Error" %}',
+            text: message,
+            icon: 'error'
+        });
+    }
+    
+    // Overlay de chargement
+    function showLoadingOverlay() {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay active';
+        overlay.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>`;
+        document.body.appendChild(overlay);
+    }
+    
+    function hideLoadingOverlay() {
+        const overlay = document.querySelector('.loading-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    // Remplissage des champs
+    function fillFormFields(data) {
+        const mappings = {
+            'name': '[name="name"]',
+            'email_id': '[name="email"]',
+            'phone_number': '[name="mobile"]',
+            'address': '[name="address"]',
+            'country': '[name="country"]',
+            'state': '[name="state"]',
+            'zip': '[name="zip"]'
+        };
+    
+        Object.entries(mappings).forEach(([dataKey, selector]) => {
+            const field = document.querySelector(selector);
+            if (field && data[dataKey]) {
+                field.value = data[dataKey];
+                field.dispatchEvent(new Event('change'));
+            }
+        });
+        updateProgress();
+    }
+    
+    // Setup du matching CV
+    function setupResumeMatching() {
+        const matchingResume = document.getElementById('matching_resume');
+        if (matchingResume) {
+            matchingResume.addEventListener('click', function() {
+                const resumeId = this.dataset.id;
+                const fileUrl = this.dataset.value;
+    
+                showLoadingOverlay();
+                $.ajax({
+                    url: "{% url 'matching-resume-completion' %}",
+                    type: 'GET',
+                    data: {
+                        "resume_id": resumeId,
+                        "file": fileUrl
+                    },
+                    success: function(response) {
+                        fillFormFields(response);
+                        hideLoadingOverlay();
+                        showSuccessMessage("{% trans 'Resume data loaded successfully' %}");
+                    },
+                    error: function(xhr, status, error) {
+                        hideLoadingOverlay();
+                        if (xhr.status === 403) {
+                            showErrorMessage("{% trans 'Session expired. Please refresh the page.' %}");
+                        } else {
+                            showErrorMessage("{% trans 'Error loading resume data' %}");
+                        }
+                    }
+                });
+            });
+        }
+    }
+    
+    // Initialisation globale
+    $(document).ready(function() {
+        // Configuration CSRF pour les requêtes AJAX
+        const csrftoken = getCookie('csrftoken');
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken || document.querySelector('[name=csrfmiddlewaretoken]').value);
+                }
+            }
+        });
+    
+        // Initialisation de Select2
+        $('.oh-select2').select2({
+            theme: 'default',
+            width: '100%',
+            placeholder: '{% trans "Select an option" %}'
+        });
+    
+        // Validation en temps réel
+        document.querySelectorAll('input, select, textarea').forEach(input => {
+            input.addEventListener('input', updateProgress);
+            input.addEventListener('blur', function() {
+                if (this.hasAttribute('required')) {
+                    validateField(this);
+                }
+            });
+        });
+    
+        // Validation email pour recrutement interne/externe
+        const emailInput = document.getElementById('email');
+        const recruitmentType = '{{ recruitment.recruitment_type }}';
+        
+        if (emailInput) {
+            emailInput.addEventListener('blur', function() {
+                const email = this.value;
+                if (recruitmentType === 'INTERNAL' && !email.endsWith('@group-activa.com')) {
+                    showError(this, "{% trans 'This recruitment is only open to internal employees' %}");
+                } else if (recruitmentType === 'EXTERNAL' && email.endsWith('@group-activa.com')) {
+                    showError(this, "{% trans 'External applications cannot use an @group-activa.com email address' %}");
+                } else {
+                    clearError(this);
+                }
+            });
+        }
+    
+        // Initialisation du drag & drop
+        document.querySelectorAll('.file-upload').forEach(dropZone => {
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+    
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+    
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                const input = this.querySelector('input[type="file"]');
+                const dt = e.dataTransfer;
+                input.files = dt.files;
+                input.dispatchEvent(new Event('change'));
+            });
+        });
+    
+        // Description de l'offre
+        var description = `{{recruitment.description|safe}}`;
+        if (description) {
+            var formattedDescription = description.replace(/\n/g, "<br>");
+            $(".job-content").html(formattedDescription);
+        }
+        $('.job-description-section').css('opacity', '1');
+    
+        // Initialiser la progression et le matching CV
+        updateProgress();
+        setupResumeMatching();
+    
+        // Attacher la validation au formulaire
+        const form = document.querySelector('.application-form');
+        if (form) {
+            form.addEventListener('submit', validateForm);
+        }
+    });
+    
+    // Inclure les scripts additionnels
+    {% include 'country.js' %}
+    {% include 'select2.js' %}
+
+    function validateField(field) {
+    if (field.hasAttribute('required') && !field.value.trim()) {
+        showError(field, "{% trans 'This field is required' %}");
+        return false;
+    }
+    
+    // Validation email
+    if (field.type === 'email' && field.value) {
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(field.value)) {
+            showError(field, "{% trans 'Please enter a valid email address' %}");
+            return false;
+        }
+    }
+    
+    // Si la validation passe, on enlève les erreurs
+    clearError(field);
+    return true;
+}
+    </script>
+  {% endblock content %}

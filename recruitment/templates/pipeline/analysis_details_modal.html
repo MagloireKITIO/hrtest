@@ -1,0 +1,287 @@
+{% load i18n %}
+<!-- pipeline/analysis_details_modal.html -->
+<div class="oh-modal__dialog-header oh-modal__dialog-header--with-close-button">
+    <h5 class="oh-modal__dialog-title">
+        <span class="oh-analytics-icon"><ion-icon name="analytics"></ion-icon></span>
+        {% trans "AI Analysis Overview" %} - {{ candidate.name }}
+    </h5>
+    <button class="oh-modal__close" aria-label="Close" onclick="$(this).closest('.oh-modal--show').toggleClass('oh-modal--show')">
+        <ion-icon name="close"></ion-icon>
+    </button>
+</div>
+
+<div class="oh-modal__dialog-body">
+    <div class="oh-content">
+        {% if analysis %}
+        <div class="oh-analysis-modern">
+            <!-- Score Radiale -->
+            <div class="oh-radial-score mb-5">
+                <div class="oh-radial-progress" data-progress="{{ analysis.score }}">
+                    <svg class="oh-progress-circle">
+                        <circle class="oh-progress-background"/>
+                        <circle class="oh-progress-fill"/>
+                    </svg>
+                    <div class="oh-progress-content">
+                        <div class="oh-progress-percent">{{ analysis.score }}%</div>
+                        <small>{% trans "Match Score" %}</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grille de détails -->
+            <div class="oh-analysis-grid">
+                <!-- Carte Éducation -->
+                <div class="oh-analysis-card education">
+                    <div class="oh-card-header">
+                        <ion-icon name="library"></ion-icon>
+                        <h6>{% trans "Education Match" %}</h6>
+                    </div>
+                    <div class="oh-card-content">
+                        {{ analysis.details.education|default:"-" }}
+                    </div>
+                </div>
+
+                <!-- Carte Expérience -->
+                <div class="oh-analysis-card experience">
+                    <div class="oh-card-header">
+                        <ion-icon name="briefcase"></ion-icon>
+                        <h6>{% trans "Experience Level" %}</h6>
+                    </div>
+                    <div class="oh-card-content">
+                        {{ analysis.details.experience|default:"-" }}
+                    </div>
+                </div>
+
+                <!-- Carte Compétences -->
+                <div class="oh-analysis-card skills">
+                    <div class="oh-card-header">
+                        <ion-icon name="code-slash"></ion-icon>
+                        <h6>{% trans "Technical Skills" %}</h6>
+                    </div>
+                    <div class="oh-card-content">
+                        {{ analysis.details.technical_skills|default:"-" }}
+                    </div>
+                </div>
+
+                <!-- Carte Certifications -->
+                <div class="oh-analysis-card certifications">
+                    <div class="oh-card-header">
+                        <ion-icon name="ribbon"></ion-icon>
+                        <h6>{% trans "Certifications" %}</h6>
+                    </div>
+                    <div class="oh-card-content">
+                        {{ analysis.details.certifications|default:"-" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Points forts/faibles -->
+            <div class="oh-highlights-container">
+                <div class="oh-highlight-card strengths">
+                    <div class="oh-highlight-header">
+                        <ion-icon name="trending-up"></ion-icon>
+                        <h6>{% trans "Key Strengths" %}</h6>
+                    </div>
+                    <div class="oh-highlight-items">
+                        {% for strength in analysis.strengths %}
+                        <div class="oh-highlight-item">
+                            <ion-icon name="checkmark-circle" class="text-success"></ion-icon>
+                            <span>{{ strength }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="oh-highlight-card improvements">
+                    <div class="oh-highlight-header">
+                        <ion-icon name="alert-circle"></ion-icon>
+                        <h6>{% trans "weakness" %}</h6>
+                    </div>
+                    <div class="oh-highlight-items">
+                        {% for area in analysis.areas_for_improvement %}
+                        <div class="oh-highlight-item">
+                            <ion-icon name="warning"></ion-icon>
+                            <span>{{ area }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="oh-empty-state">
+            <ion-icon name="cloud-offline" class="oh-empty-icon"></ion-icon>
+            <h5>{% trans "No analysis data available" %}</h5>
+            <p>{% trans "Try analyzing this candidate first" %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.oh-analysis-modern {
+    --circle-size: 140px;
+    --progress-stroke: 6px;
+    --card-radius: 12px;
+    --color-education: #6366f1;
+    --color-experience: #10b981;
+    --color-skills: #f59e0b;
+    --color-certifications: #8b5cf6;
+}
+
+/* Score radiale */
+.oh-radial-progress {
+    position: relative;
+    width: var(--circle-size);
+    height: var(--circle-size);
+    margin: 0 auto;
+}
+
+.oh-progress-circle {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.oh-progress-circle circle {
+    fill: none;
+    stroke-width: var(--progress-stroke);
+    stroke-linecap: round;
+}
+
+.oh-progress-background {
+    stroke: #e2e8f0;
+}
+
+.oh-progress-fill {
+    stroke: #3b82f6;
+    stroke-dasharray: 440;
+    stroke-dashoffset: calc(440 - (440 * var(--progress)) / 100);
+    transition: stroke-dashoffset 0.8s ease;
+}
+
+.oh-progress-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.oh-progress-percent {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Grille de cartes */
+.oh-analysis-grid {
+    display: grid;
+    gap: 1.2rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    margin-bottom: 2rem;
+}
+
+.oh-analysis-card {
+    background: white;
+    border-radius: var(--card-radius);
+    padding: 1.4rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border: 1px solid #f1f5f9;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.oh-analysis-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.oh-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.oh-card-header ion-icon {
+    font-size: 1.6rem;
+    padding: 8px;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.oh-card-header h6 {
+    font-size: 0.95rem;
+    margin: 0;
+    color: #1e293b;
+}
+
+.oh-card-content {
+    font-size: 0.9rem;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+/* Couleurs thématiques */
+.education ion-icon { color: var(--color-education); }
+.experience ion-icon { color: var(--color-experience); }
+.skills ion-icon { color: var(--color-skills); }
+.certifications ion-icon { color: var(--color-certifications); }
+
+/* Points forts/faibles */
+.oh-highlights-container {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.oh-highlight-card {
+    background: white;
+    border-radius: var(--card-radius);
+    padding: 1.4rem;
+    border: 1px solid #f1f5f9;
+}
+
+.oh-highlight-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.oh-highlight-header ion-icon {
+    font-size: 1.4rem;
+}
+
+.oh-highlight-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.oh-highlight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0.8rem;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.oh-highlight-item ion-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* État vide */
+.oh-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.oh-empty-icon {
+    font-size: 4rem;
+    color: #cbd5e1;
+    margin-bottom: 1.5rem;
+}
+</style>

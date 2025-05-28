@@ -1,0 +1,175 @@
+<!-- candidate_portal/templates/candidate_portal/dashboard.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Tableau de bord" %} | {% trans "Espace Candidat" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "Candidatures" %}</h3>
+                    <div class="candidate-card__icon">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                    </div>
+                </div>
+                <div class="candidate-card__body">
+                    <div class="text-center">
+                        <h2 class="mb-0">{{ stats.total_applications }}</h2>
+                        <p class="text-muted">{% trans "Total" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "En cours" %}</h3>
+                    <div class="candidate-card__icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                        <ion-icon name="time-outline"></ion-icon>
+                    </div>
+                </div>
+                <div class="candidate-card__body">
+                    <div class="text-center">
+                        <h2 class="mb-0">{{ stats.in_progress }}</h2>
+                        <p class="text-muted">{% trans "En traitement" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "Acceptées" %}</h3>
+                    <div class="candidate-card__icon" style="background: rgba(5, 150, 105, 0.1); color: #059669;">
+                        <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    </div>
+                </div>
+                <div class="candidate-card__body">
+                    <div class="text-center">
+                        <h2 class="mb-0">{{ stats.hired }}</h2>
+                        <p class="text-muted">{% trans "Offres acceptées" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "Refusées" %}</h3>
+                    <div class="candidate-card__icon" style="background: rgba(220, 38, 38, 0.1); color: #dc2626;">
+                        <ion-icon name="close-circle-outline"></ion-icon>
+                    </div>
+                </div>
+                <div class="candidate-card__body">
+                    <div class="text-center">
+                        <h2 class="mb-0">{{ stats.rejected }}</h2>
+                        <p class="text-muted">{% trans "Non retenues" %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Applications & Recommended Jobs -->
+    <div class="row">
+        <div class="col-md-8 mb-4">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "Candidatures récentes" %}</h3>
+                    <a href="#" class="btn btn-sm btn-outline-primary">{% trans "Voir tout" %}</a>
+                </div>
+                <div class="candidate-card__body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Poste" %}</th>
+                                    <th>{% trans "Date" %}</th>
+                                    <th>{% trans "Statut" %}</th>
+                                    <th>{% trans "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for application in applications %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ application.job_position_id.job_position }}</strong><br>
+                                        <small class="text-muted">{{ application.recruitment_id.title }}</small>
+                                    </td>
+                                    <td>{{ application.created_at|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if application.hired %}
+                                            <span class="badge bg-success">{% trans "Acceptée" %}</span>
+                                        {% elif application.canceled %}
+                                            <span class="badge bg-danger">{% trans "Refusée" %}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{{ application.stage_id.stage }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                                            <ion-icon name="eye-outline"></ion-icon>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        {% trans "Aucune candidature récente" %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="candidate-card">
+                <div class="candidate-card__header">
+                    <h3 class="candidate-card__title">{% trans "Offres recommandées" %}</h3>
+                    <a href="#" class="btn btn-sm btn-outline-primary">{% trans "Plus" %}</a>
+                </div>
+                <div class="candidate-card__body">
+                    {% for job in recommended_jobs %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ job.title }}</h5>
+                            <p class="card-text text-muted">
+                                {% for position in job.open_positions.all %}
+                                    <span class="badge bg-light text-dark me-1">{{ position.job_position }}</span>
+                                {% endfor %}
+                            </p>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">
+                                    <ion-icon name="calendar-outline"></ion-icon>
+                                    {{ job.created_at|date:"d/m/Y" }}
+                                </small>
+                                <a href="{% url 'application-form' %}?recruitmentId={{ job.id }}" class="btn btn-sm btn-primary">
+                                    {% trans "Postuler" %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <ion-icon name="search-outline" style="font-size: 3rem; color: #9ca3af;"></ion-icon>
+                        <p class="mt-2 text-muted">{% trans "Aucune offre recommandée pour le moment" %}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

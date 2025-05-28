@@ -1,0 +1,1514 @@
+<!-- candidate_portal/templates/candidate_portal/profile.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Mon Profil" %} | {% trans "Espace Candidat" %}{% endblock %}
+{% block header_title %}{% trans "Mon Profil" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-completion {
+        background-color: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .profile-completion__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .profile-completion__progress-bar {
+        height: 8px;
+        background-color: #e5e7eb;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .profile-completion__progress {
+        height: 100%;
+        background: linear-gradient(to right, #2563eb, #3b82f6);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+    
+    .profile-completion__items {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    
+    .profile-completion__item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .profile-completion__item-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+    
+    .profile-completion__item-icon--completed {
+        background-color: rgba(5, 150, 105, 0.1);
+        color: #059669;
+    }
+    
+    .profile-completion__item-icon--incomplete {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+    
+    .profile-tabs {
+        margin-bottom: 1.5rem;
+    }
+    
+    .profile-tabs__buttons {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+    }
+    
+    .profile-tabs__button {
+        padding: 0.75rem 1.5rem;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        color: #6b7280;
+        transition: all 0.3s ease;
+    }
+    
+    .profile-tabs__button:hover {
+        color: #1f2937;
+    }
+    
+    .profile-tabs__button.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .profile-tabs__content {
+        display: none;
+    }
+    
+    .profile-tabs__content.active {
+        display: block;
+    }
+    
+    .profile-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .profile-card__title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .profile-card__title h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .profile-header {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-header__avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .profile-header__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-header__avatar-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 0.25rem;
+        font-size: 0.75rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        opacity: 0;
+    }
+    
+    .profile-header__avatar:hover .profile-header__avatar-overlay {
+        opacity: 1;
+    }
+    
+    .profile-header__info {
+        flex: 1;
+    }
+    
+    .profile-header__name {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+    
+    .profile-header__details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .profile-header__detail {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6b7280;
+    }
+    
+    .profile-header__actions {
+        margin-top: 1rem;
+    }
+    
+    .profile-form__row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .document-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .document-card__icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        border-radius: 8px;
+        font-size: 1.25rem;
+    }
+    
+    .document-card__info {
+        flex: 1;
+    }
+    
+    .document-card__title {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    
+    .document-card__meta {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .document-card__actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .empty-state__icon {
+        font-size: 3rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state__message {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Styles pour les modals */
+    .oh-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+    }
+    
+    .oh-modal.show {
+        display: flex;
+    }
+    
+    .oh-modal-dialog {
+        background-color: white;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .oh-modal-content {
+        position: relative;
+    }
+    
+    .oh-modal-header {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .oh-modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .oh-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+    
+    .oh-modal-body {
+        padding: 1rem;
+    }
+    
+    .oh-modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .profile-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .profile-header__details {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Profile Completion -->
+    <div class="profile-completion">
+        <div class="profile-completion__header">
+            <h3>{% trans "Complétez votre profil" %}</h3>
+            <span class="oh-badge oh-badge--{{ completion_class }}">{{ completion_percentage }}%</span>
+        </div>
+        <div class="profile-completion__progress-bar">
+            <div class="profile-completion__progress" style="width: {{ completion_percentage }}%;"></div>
+        </div>
+        <p class="text-muted">{% trans "Un profil complet augmente vos chances d'être remarqué par les recruteurs" %}</p>
+        
+        <div class="profile-completion__items">
+            {% for item in completion_items %}
+            <div class="profile-completion__item">
+                <div class="profile-completion__item-icon {% if item.completed %}profile-completion__item-icon--completed{% else %}profile-completion__item-icon--incomplete{% endif %}">
+                    {% if item.completed %}
+                    <ion-icon name="checkmark"></ion-icon>
+                    {% else %}
+                    <ion-icon name="alert"></ion-icon>
+                    {% endif %}
+                </div>
+                <span>{{ item.name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Profile Header -->
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-header__avatar">
+                {% if profile.photo %}
+                <img src="{{ profile.photo.url }}" alt="{{ candidate.get_full_name }}">
+                {% else %}
+                <img src="https://ui-avatars.com/api/?name={{ candidate.first_name }}+{{ candidate.last_name }}&background=random" alt="{{ candidate.get_full_name }}">
+                {% endif %}
+                <div class="profile-header__avatar-overlay" onclick="openModal('updatePhotoModal')">
+                    <ion-icon name="camera"></ion-icon> {% trans "Modifier" %}
+                </div>
+            </div>
+            <div class="profile-header__info">
+                <h2 class="profile-header__name">{{ candidate.get_full_name }}</h2>
+                <div class="profile-header__details">
+                    <div class="profile-header__detail">
+                        <ion-icon name="mail-outline"></ion-icon>
+                        <span>{{ candidate.email }}</span>
+                    </div>
+                    <div class="profile-header__detail">
+                        <ion-icon name="call-outline"></ion-icon>
+                        <span>{{ profile.phone|default:"Non renseigné" }}</span>
+                    </div>
+                    <div class="profile-header__detail">
+                        <ion-icon name="business-outline"></ion-icon>
+                        <span>{{ profile.company.company }}</span>
+                    </div>
+                </div>
+                <div class="profile-header__actions">
+                    <button class="oh-btn oh-btn--primary" onclick="openModal('editProfileModal')">
+                        <ion-icon name="create-outline"></ion-icon>
+                        {% trans "Modifier le profil" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Tabs -->
+    <div class="profile-tabs">
+        <div class="profile-tabs__buttons">
+            <div class="profile-tabs__button active" data-tab="personal">{% trans "Informations personnelles" %}</div>
+            <div class="profile-tabs__button" data-tab="professional">{% trans "Expérience professionnelle" %}</div>
+            <div class="profile-tabs__button" data-tab="education">{% trans "Formation" %}</div>
+            <div class="profile-tabs__button" data-tab="documents">{% trans "Documents" %}</div>
+            <div class="profile-tabs__button" data-tab="skills">{% trans "Compétences" %}</div>
+        </div>
+        
+        <!-- Personal Information Tab -->
+        <div class="profile-tabs__content active" id="personal">
+            <div class="profile-card">
+                <div class="profile-card__title">
+                    <h3>{% trans "Informations personnelles" %}</h3>
+                    <button class="oh-btn oh-btn--outline-primary oh-btn--sm" onclick="openModal('editPersonalInfoModal')">
+                        <ion-icon name="create-outline"></ion-icon>
+                        {% trans "Modifier" %}
+                    </button>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="text-muted mb-1">{% trans "Genre" %}</p>
+                        <p>{{ profile.gender_display|default:"Non renseigné" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-muted mb-1">{% trans "Date de naissance" %}</p>
+                        <p>{{ profile.date_of_birth|date:"d/m/Y"|default:"Non renseigné" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <p class="text-muted mb-1">{% trans "Adresse" %}</p>
+                        <p>{{ profile.address|default:"Non renseigné" }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <p class="text-muted mb-1">{% trans "Ville" %}</p>
+                        <p>{{ profile.city|default:"Non renseigné" }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="text-muted mb-1">{% trans "Code postal" %}</p>
+                        <p>{{ profile.zip_code|default:"Non renseigné" }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="text-muted mb-1">{% trans "Pays" %}</p>
+                        <p>{{ profile.country|default:"Non renseigné" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Professional Experience Tab -->
+        <div class="profile-tabs__content" id="professional">
+            <div class="profile-card">
+                <div class="profile-card__title">
+                    <h3>{% trans "Expérience professionnelle" %}</h3>
+                    <button class="oh-btn oh-btn--outline-primary oh-btn--sm" onclick="openModal('addExperienceModal')">
+                        <ion-icon name="add-outline"></ion-icon>
+                        {% trans "Ajouter" %}
+                    </button>
+                </div>
+                
+                {% if experiences %}
+                    {% for experience in experiences %}
+                    <div class="oh-card mb-3">
+                        <div class="oh-card__body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">{{ experience.job_title }}</h5>
+                                <div>
+                                    <button class="oh-btn oh-btn--outline-secondary oh-btn--sm me-1" data-id="{{ experience.id }}" onclick="openEditExperienceModal('{{ experience.id }}')">
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </button>
+                                    <button class="oh-btn oh-btn--outline-danger oh-btn--sm" data-id="{{ experience.id }}" onclick="confirmDelete('experience', '{{ experience.id }}')">
+                                        <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
+                                </div>
+                            </div>
+                            <h6 class="text-muted">{{ experience.company }}</h6>
+                            <p class="text-muted">
+                                {{ experience.start_date|date:"m/Y" }} - 
+                                {% if experience.currently_working %}
+                                {% trans "Actuellement" %}
+                                {% else %}
+                                {{ experience.end_date|date:"m/Y" }}
+                                {% endif %}
+                            </p>
+                            <p>{{ experience.description }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">
+                            <ion-icon name="briefcase-outline"></ion-icon>
+                        </div>
+                        <p class="empty-state__message">{% trans "Vous n'avez pas encore ajouté d'expérience professionnelle." %}</p>
+                        <button class="oh-btn oh-btn--primary" onclick="openModal('addExperienceModal')">
+                            <ion-icon name="add-outline"></ion-icon>
+                            {% trans "Ajouter une expérience" %}
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Education Tab -->
+        <div class="profile-tabs__content" id="education">
+            <div class="profile-card">
+                <div class="profile-card__title">
+                    <h3>{% trans "Formation" %}</h3>
+                    <button class="oh-btn oh-btn--outline-primary oh-btn--sm" onclick="openModal('addEducationModal')">
+                        <ion-icon name="add-outline"></ion-icon>
+                        {% trans "Ajouter" %}
+                    </button>
+                </div>
+                
+                {% if education %}
+                    {% for edu in education %}
+                    <div class="oh-card mb-3">
+                        <div class="oh-card__body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0">{{ edu.degree }}</h5>
+                                <div>
+                                    <button class="oh-btn oh-btn--outline-secondary oh-btn--sm me-1" data-id="{{ edu.id }}" onclick="openEditEducationModal('{{ edu.id }}')">
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </button>
+                                    <button class="oh-btn oh-btn--outline-danger oh-btn--sm" data-id="{{ edu.id }}" onclick="confirmDelete('education', '{{ edu.id }}')">
+                                        <ion-icon name="trash-outline"></ion-icon>
+                                    </button>
+                                </div>
+                            </div>
+                            <h6 class="text-muted">{{ edu.institution }}</h6>
+                            <p class="text-muted">{{ edu.start_year }} - {{ edu.end_year|default:"Actuellement" }}</p>
+                            <p>{{ edu.description }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">
+                            <ion-icon name="school-outline"></ion-icon>
+                        </div>
+                        <p class="empty-state__message">{% trans "Vous n'avez pas encore ajouté de formation." %}</p>
+                        <button class="oh-btn oh-btn--primary" onclick="openModal('addEducationModal')">
+                            <ion-icon name="add-outline"></ion-icon>
+                            {% trans "Ajouter une formation" %}
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Documents Tab -->
+        <div class="profile-tabs__content" id="documents">
+            <div class="profile-card">
+                <div class="profile-card__title">
+                    <h3>{% trans "Documents" %}</h3>
+                    <button class="oh-btn oh-btn--outline-primary oh-btn--sm" onclick="openModal('addDocumentModal')">
+                        <ion-icon name="add-outline"></ion-icon>
+                        {% trans "Ajouter" %}
+                    </button>
+                </div>
+                
+                {% if documents %}
+                    {% for doc in documents %}
+                    <div class="document-card">
+                        <div class="document-card__icon">
+                            <ion-icon name="document-outline"></ion-icon>
+                        </div>
+                        <div class="document-card__info">
+                            <div class="document-card__title">{{ doc.title }}</div>
+                            <div class="document-card__meta">
+                                {% trans "Ajouté le" %} {{ doc.uploaded_at|date:"d/m/Y" }} • {{ doc.file_size|filesizeformat }}
+                            </div>
+                        </div>
+                        <div class="document-card__actions">
+                            <a href="{{ doc.file.url }}" class="oh-btn oh-btn--outline-secondary oh-btn--sm" target="_blank">
+                                <ion-icon name="eye-outline"></ion-icon>
+                            </a>
+                            <a href="{{ doc.file.url }}" class="oh-btn oh-btn--outline-primary oh-btn--sm" download>
+                                <ion-icon name="download-outline"></ion-icon>
+                            </a>
+                            <button class="oh-btn oh-btn--outline-danger oh-btn--sm" data-id="{{ doc.id }}" onclick="confirmDelete('document', '{{ doc.id }}')">
+                                <ion-icon name="trash-outline"></ion-icon>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">
+                            <ion-icon name="document-outline"></ion-icon>
+                        </div>
+                        <p class="empty-state__message">{% trans "Vous n'avez pas encore ajouté de document." %}</p>
+                        <button class="oh-btn oh-btn--primary" onclick="openModal('addDocumentModal')">
+                            <ion-icon name="add-outline"></ion-icon>
+                            {% trans "Ajouter un document" %}
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Skills Tab -->
+        <div class="profile-tabs__content" id="skills">
+            <div class="profile-card">
+                <div class="profile-card__title">
+                    <h3>{% trans "Compétences" %}</h3>
+                    <button class="oh-btn oh-btn--outline-primary oh-btn--sm" onclick="openModal('editSkillsModal')">
+                        <ion-icon name="create-outline"></ion-icon>
+                        {% trans "Modifier" %}
+                    </button>
+                </div>
+                
+                {% if skills %}
+                    <div class="mb-4">
+                        {% for skill in skills %}
+                        <span class="oh-badge oh-badge--primary me-2 mb-2 p-2">{{ skill.title }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">
+                            <ion-icon name="code-working-outline"></ion-icon>
+                        </div>
+                        <p class="empty-state__message">{% trans "Vous n'avez pas encore ajouté de compétences." %}</p>
+                        <button class="oh-btn oh-btn--primary" onclick="openModal('editSkillsModal')">
+                            <ion-icon name="add-outline"></ion-icon>
+                            {% trans "Ajouter des compétences" %}
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="oh-modal" id="editProfileModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier le profil" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('editProfileModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:update_profile' %}">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="firstName" class="form-label">{% trans "Prénom" %}</label>
+                        <input type="text" class="oh-input w-100" id="firstName" name="first_name" value="{{ candidate.first_name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="lastName" class="form-label">{% trans "Nom" %}</label>
+                        <input type="text" class="oh-input w-100" id="lastName" name="last_name" value="{{ candidate.last_name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{% trans "Email" %}</label>
+                        <input type="email" class="oh-input w-100" id="email" name="email" value="{{ candidate.email }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">{% trans "Téléphone" %}</label>
+                        <input type="tel" class="oh-input w-100" id="phone" name="phone" value="{{ profile.phone|default:'' }}">
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('editProfileModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Personal Info Modal -->
+<div class="oh-modal" id="editPersonalInfoModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier les informations personnelles" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('editPersonalInfoModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:update_personal_info' %}">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="gender" class="form-label">{% trans "Genre" %}</label>
+                        <select class="oh-select w-100" id="gender" name="gender">
+                            <option value="male" {% if profile.gender == 'male' %}selected{% endif %}>{% trans "Monsieur" %}</option>
+                            <option value="female" {% if profile.gender == 'female' %}selected{% endif %}>{% trans "Madame" %}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dob" class="form-label">{% trans "Date de naissance" %}</label>
+                        <input type="date" class="oh-input w-100" id="dob" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d'|default:'' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">{% trans "Adresse" %}</label>
+                        <textarea class="oh-input w-100" id="address" name="address" rows="3">{{ profile.address|default:'' }}</textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">{% trans "Ville" %}</label>
+                            <input type="text" class="oh-input w-100" id="city" name="city" value="{{ profile.city|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="zipCode" class="form-label">{% trans "Code postal" %}</label>
+                            <input type="text" class="oh-input w-100" id="zipCode" name="zip_code" value="{{ profile.zip_code|default:'' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="country" class="form-label">{% trans "Pays" %}</label>
+                        <input type="text" class="oh-input w-100" id="country" name="country" value="{{ profile.country|default:'' }}">
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('editPersonalInfoModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Experience Modal -->
+<div class="oh-modal" id="addExperienceModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Ajouter une expérience professionnelle" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('addExperienceModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:add_experience' %}">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="jobTitle" class="form-label">{% trans "Intitulé du poste" %}</label>
+                        <input type="text" class="oh-input w-100" id="jobTitle" name="job_title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="company" class="form-label">{% trans "Entreprise" %}</label>
+                        <input type="text" class="oh-input w-100" id="company" name="company" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="industry" class="form-label">{% trans "Secteur d'activité" %}</label>
+                        <input type="text" class="oh-input w-100" id="industry" name="industry">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startDate" class="form-label">{% trans "Date de début" %}</label>
+                            <input type="month" class="oh-input w-100" id="startDate" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endDate" class="form-label">{% trans "Date de fin" %}</label>
+                            <input type="month" class="oh-input w-100" id="endDate" name="end_date">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="oh-checkbox">
+                            <input type="checkbox" class="oh-checkbox__input" id="currentlyWorking" name="currently_working">
+                            <label class="oh-checkbox__label" for="currentlyWorking">{% trans "Je travaille actuellement à ce poste" %}</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">{% trans "Description" %}</label>
+                        <textarea class="oh-input w-100" id="description" name="description" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('addExperienceModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Ajouter" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Education Modal -->
+<div class="oh-modal" id="addEducationModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Ajouter une formation" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('addEducationModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:add_education' %}">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="degree" class="form-label">{% trans "Diplôme/Formation" %}</label>
+                        <input type="text" class="oh-input w-100" id="degree" name="degree" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="institution" class="form-label">{% trans "Établissement" %}</label>
+                        <input type="text" class="oh-input w-100" id="institution" name="institution" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="startYear" class="form-label">{% trans "Année de début" %}</label>
+                            <input type="number" class="oh-input w-100" id="startYear" name="start_year" min="1950" max="2050" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="endYear" class="form-label">{% trans "Année de fin" %}</label>
+                            <input type="number" class="oh-input w-100" id="endYear" name="end_year" min="1950" max="2050">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="oh-checkbox">
+                            <input type="checkbox" class="oh-checkbox__input" id="currentlyStudying" name="currently_studying">
+                            <label class="oh-checkbox__label" for="currentlyStudying">{% trans "Je suis actuellement cette formation" %}</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="eduDescription" class="form-label">{% trans "Description" %}</label>
+                        <textarea class="oh-input w-100" id="eduDescription" name="description" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('addEducationModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Ajouter" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="oh-modal" id="addDocumentModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Ajouter un document" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('addDocumentModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:add_document' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="documentTitle" class="form-label">{% trans "Titre du document" %}</label>
+                        <input type="text" class="oh-input w-100" id="documentTitle" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentType" class="form-label">{% trans "Type de document" %}</label>
+                        <select class="oh-select w-100" id="documentType" name="document_type">
+                            <option value="cv">{% trans "CV" %}</option>
+                            <option value="cover_letter">{% trans "Lettre de motivation" %}</option>
+                            <option value="diploma">{% trans "Diplôme" %}</option>
+                            <option value="certificate">{% trans "Certificat" %}</option>
+                            <option value="other">{% trans "Autre" %}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentFile" class="form-label">{% trans "Fichier" %}</label>
+                        <input type="file" class="oh-input w-100" id="documentFile" name="file" required>
+                        <div class="form-text">{% trans "Formats acceptés: PDF, DOCX, JPG, PNG. Taille max: 5 MB" %}</div>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('addDocumentModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Ajouter" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Skills Modal -->
+<div class="oh-modal" id="editSkillsModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier les compétences" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('editSkillsModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:update_skills' %}" id="updateSkillsForm">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div id="skillsAlertContainer"></div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Compétences" %}</label>
+                        <select class="oh-select oh-select-multiple w-100" id="skills" name="skills" multiple data-placeholder="{% trans 'Sélectionnez vos compétences' %}">
+                            {% for skill in all_skills %}
+                            <option value="{{ skill.id }}" {% if skill in skills %}selected{% endif %}>{{ skill.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted mt-1 d-block">{% trans "Cliquez sur une compétence pour la retirer" %}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newSkill" class="form-label">{% trans "Ajouter une nouvelle compétence" %}</label>
+                        <div class="d-flex">
+                            <input type="text" class="oh-input flex-grow-1 me-2" id="newSkill" name="new_skill" placeholder="{% trans 'Exemple: Java, Marketing digital...' %}">
+                            <button class="oh-btn oh-btn--outline-primary" type="button" id="addNewSkill">
+                                <ion-icon name="add-outline"></ion-icon> {% trans "Ajouter" %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('editSkillsModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Update Photo Modal -->
+<div class="oh-modal" id="updatePhotoModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier la photo de profil" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('updatePhotoModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:update_photo' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="profilePhoto" class="form-label">{% trans "Sélectionner une photo" %}</label>
+                        <input type="file" class="oh-input w-100" id="profilePhoto" name="photo" accept="image/*" required>
+                        <div class="form-text">{% trans "Formats acceptés: JPG, PNG. Taille max: 2 MB" %}</div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <img id="photoPreview" class="img-fluid rounded" style="max-height: 200px; display: none;">
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('updatePhotoModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="oh-modal" id="confirmDeleteModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Confirmation de suppression" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('confirmDeleteModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="oh-modal-body">
+                <p id="deleteConfirmMessage">{% trans "Êtes-vous sûr de vouloir supprimer cet élément ?" %}</p>
+            </div>
+            <div class="oh-modal-footer">
+                <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('confirmDeleteModal')">{% trans "Annuler" %}</button>
+                <button type="button" class="oh-btn oh-btn--danger" id="confirmDeleteBtn">{% trans "Supprimer" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Experience Modal -->
+<div class="oh-modal" id="editExperienceModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier l'expérience professionnelle" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('editExperienceModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:edit_experience' 0 %}" id="editExperienceForm">
+                {% csrf_token %}
+                <input type="hidden" id="editExperienceId" name="experience_id" value="">
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="editJobTitle" class="form-label">{% trans "Intitulé du poste" %}</label>
+                        <input type="text" class="oh-input w-100" id="editJobTitle" name="job_title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCompany" class="form-label">{% trans "Entreprise" %}</label>
+                        <input type="text" class="oh-input w-100" id="editCompany" name="company" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editIndustry" class="form-label">{% trans "Secteur d'activité" %}</label>
+                        <input type="text" class="oh-input w-100" id="editIndustry" name="industry">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editStartDate" class="form-label">{% trans "Date de début" %}</label>
+                            <input type="month" class="oh-input w-100" id="editStartDate" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editEndDate" class="form-label">{% trans "Date de fin" %}</label>
+                            <input type="month" class="oh-input w-100" id="editEndDate" name="end_date">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="oh-checkbox">
+                            <input type="checkbox" class="oh-checkbox__input" id="editCurrentlyWorking" name="currently_working">
+                            <label class="oh-checkbox__label" for="editCurrentlyWorking">{% trans "Je travaille actuellement à ce poste" %}</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">{% trans "Description" %}</label>
+                        <textarea class="oh-input w-100" id="editDescription" name="description" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('editExperienceModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Education Modal -->
+<div class="oh-modal" id="editEducationModal">
+    <div class="oh-modal-dialog">
+        <div class="oh-modal-content">
+            <div class="oh-modal-header">
+                <h5 class="oh-modal-title">{% trans "Modifier la formation" %}</h5>
+                <button type="button" class="oh-modal-close" onclick="closeModal('editEducationModal')">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <form method="post" action="{% url 'candidate_portal:edit_education' 0 %}" id="editEducationForm">
+                {% csrf_token %}
+                <input type="hidden" id="editEducationId" name="education_id" value="">
+                <div class="oh-modal-body">
+                    <div class="mb-3">
+                        <label for="editDegree" class="form-label">{% trans "Diplôme/Formation" %}</label>
+                        <input type="text" class="oh-input w-100" id="editDegree" name="degree" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstitution" class="form-label">{% trans "Établissement" %}</label>
+                        <input type="text" class="oh-input w-100" id="editInstitution" name="institution" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editFieldOfStudy" class="form-label">{% trans "Domaine d'études" %}</label>
+                        <input type="text" class="oh-input w-100" id="editFieldOfStudy" name="field_of_study">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editStartYear" class="form-label">{% trans "Année de début" %}</label>
+                            <input type="number" class="oh-input w-100" id="editStartYear" name="start_year" min="1950" max="2050" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editEndYear" class="form-label">{% trans "Année de fin" %}</label>
+                            <input type="number" class="oh-input w-100" id="editEndYear" name="end_year" min="1950" max="2050">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="oh-checkbox">
+                            <input type="checkbox" class="oh-checkbox__input" id="editCurrentlyStudying" name="currently_studying">
+                            <label class="oh-checkbox__label" for="editCurrentlyStudying">{% trans "Je suis actuellement cette formation" %}</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEducationDescription" class="form-label">{% trans "Description" %}</label>
+                        <textarea class="oh-input w-100" id="editEducationDescription" name="description" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('editEducationModal')">{% trans "Annuler" %}</button>
+                    <button type="submit" class="oh-btn oh-btn--primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Tab navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.profile-tabs__button');
+        const tabContents = document.querySelectorAll('.profile-tabs__content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to current button and content
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Toggle end date field based on currently working checkbox
+        const currentlyWorkingCheckbox = document.getElementById('currentlyWorking');
+        const endDateField = document.getElementById('endDate');
+        
+        if (currentlyWorkingCheckbox && endDateField) {
+            currentlyWorkingCheckbox.addEventListener('change', function() {
+                endDateField.disabled = this.checked;
+                if (this.checked) {
+                    endDateField.value = '';
+                }
+            });
+        }
+        
+        // Toggle end year field based on currently studying checkbox
+        const currentlyStudyingCheckbox = document.getElementById('currentlyStudying');
+        const endYearField = document.getElementById('endYear');
+        
+        if (currentlyStudyingCheckbox && endYearField) {
+            currentlyStudyingCheckbox.addEventListener('change', function() {
+                endYearField.disabled = this.checked;
+                if (this.checked) {
+                    endYearField.value = '';
+                }
+            });
+        }
+        
+        // Photo preview
+        const photoInput = document.getElementById('profilePhoto');
+        const photoPreview = document.getElementById('photoPreview');
+        
+        if (photoInput && photoPreview) {
+            photoInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        photoPreview.src = e.target.result;
+                        photoPreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        // Initialiser Select2 pour les compétences
+        if (typeof $ !== 'undefined' && $('#skills').length > 0) {
+            setTimeout(function() {
+                initSkillsSelect();
+            }, 100);
+        } else if (typeof initializeSelect2 === 'function') {
+            initializeSelect2('.oh-select-multiple');
+        }
+        
+        // Add skill button functionality
+        const addNewSkillBtn = document.getElementById('addNewSkill');
+        if (addNewSkillBtn) {
+            addNewSkillBtn.addEventListener('click', addNewSkill);
+        }
+        
+        // Modifier l'action du formulaire d'édition d'expérience lorsqu'il est soumis
+        const editExperienceForm = document.getElementById('editExperienceForm');
+        if (editExperienceForm) {
+            editExperienceForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const experienceId = document.getElementById('editExperienceId').value;
+                this.action = `/candidate-portal/profile/experience/${experienceId}/edit/`;
+                this.submit();
+            });
+        }
+        
+        // Modifier l'action du formulaire d'édition de formation lorsqu'il est soumis
+        const editEducationForm = document.getElementById('editEducationForm');
+        if (editEducationForm) {
+            editEducationForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const educationId = document.getElementById('editEducationId').value;
+                this.action = `/candidate-portal/profile/education/${educationId}/edit/`;
+                this.submit();
+            });
+        }
+        
+        // Événement pour le checkbox d'édition "Je travaille actuellement à ce poste"
+        const editCurrentlyWorkingCheckbox = document.getElementById('editCurrentlyWorking');
+        const editEndDateField = document.getElementById('editEndDate');
+        
+        if (editCurrentlyWorkingCheckbox && editEndDateField) {
+            editCurrentlyWorkingCheckbox.addEventListener('change', function() {
+                editEndDateField.disabled = this.checked;
+                if (this.checked) {
+                    editEndDateField.value = '';
+                }
+            });
+        }
+        
+        // Événement pour le checkbox d'édition "Je suis actuellement cette formation"
+        const editCurrentlyStudyingCheckbox = document.getElementById('editCurrentlyStudying');
+        const editEndYearField = document.getElementById('editEndYear');
+        
+        if (editCurrentlyStudyingCheckbox && editEndYearField) {
+            editCurrentlyStudyingCheckbox.addEventListener('change', function() {
+                editEndYearField.disabled = this.checked;
+                if (this.checked) {
+                    editEndYearField.value = '';
+                }
+            });
+        }
+    });
+    
+    // Fonction pour initialiser Select2 pour les compétences
+    function initSkillsSelect() {
+        // S'assurer que jQuery et Select2 sont chargés
+        if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
+            console.error('jQuery ou Select2 n\'est pas chargé');
+            return;
+        }
+        
+        // Initialiser Select2 avec la configuration complète
+        $('#skills').select2({
+            placeholder: 'Sélectionnez vos compétences',
+            width: '100%',
+            allowClear: true,
+            closeOnSelect: false,
+            ajax: {
+                url: '/candidate-portal/profile/skills/suggestions/',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term || '',
+                        page: params.page || 1
+                    };
+                },
+                processResults: function (data, params) {
+                    return {
+                        results: data.results,
+                        pagination: {
+                            more: false
+                        }
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2,
+            // Ajouter les textes en français
+            language: {
+                errorLoading: function() {
+                    return 'Les résultats ne peuvent pas être chargés.';
+                },
+                inputTooLong: function(args) {
+                    var overChars = args.input.length - args.maximum;
+                    return 'Veuillez supprimer ' + overChars + ' caractère' + (overChars > 1 ? 's' : '');
+                },
+                inputTooShort: function(args) {
+                    var remainingChars = args.minimum - args.input.length;
+                    return 'Veuillez entrer au moins ' + remainingChars + ' caractère' + (remainingChars > 1 ? 's' : '');
+                },
+                loadingMore: function() {
+                    return 'Chargement de résultats supplémentaires…';
+                },
+                maximumSelected: function(args) {
+                    return 'Vous pouvez seulement sélectionner ' + args.maximum + ' élément' + (args.maximum > 1 ? 's' : '');
+                },
+                noResults: function() {
+                    return 'Aucun résultat trouvé';
+                },
+                searching: function() {
+                    return 'Recherche en cours…';
+                },
+                removeAllItems: function() {
+                    return 'Supprimer tous les éléments';
+                }
+            }
+        });
+    }
+    
+    // Fonction pour ajouter une nouvelle compétence
+    function addNewSkill() {
+        const newSkillInput = document.getElementById('newSkill');
+        const skillValue = newSkillInput.value.trim();
+        
+        if (skillValue) {
+            // Afficher un indicateur de chargement
+            const addBtn = document.getElementById('addNewSkill');
+            const originalText = addBtn.innerHTML;
+            addBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Ajout...';
+            addBtn.disabled = true;
+            
+            // Récupérer le CSRF token
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            // Envoyer la requête pour créer une nouvelle compétence
+            fetch('/candidate-portal/profile/skills/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    title: skillValue
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Une erreur est survenue');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Vérifier si la compétence existe déjà dans le select
+                const existingOption = document.querySelector(`#skills option[value="${data.id}"]`);
+                
+                if (!existingOption) {
+                    // Créer une nouvelle option et l'ajouter au select
+                    const newOption = new Option(data.title, data.id, true, true);
+                    $('#skills').append(newOption);
+                }
+                
+                // Sélectionner l'option (qu'elle soit nouvelle ou existante)
+                let currentValues = $('#skills').val() || [];
+                if (!Array.isArray(currentValues)) {
+                    currentValues = [currentValues];
+                }
+                
+                if (!currentValues.includes(data.id.toString())) {
+                    currentValues.push(data.id.toString());
+                    $('#skills').val(currentValues).trigger('change');
+                }
+                
+                // Réinitialiser le champ de saisie
+                newSkillInput.value = '';
+                
+                // Afficher un message de succès temporaire
+                showAlert('success', `Compétence "${data.title}" ajoutée avec succès`);
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showAlert('danger', error.message || 'Une erreur est survenue lors de l\'ajout de la compétence');
+            })
+            .finally(() => {
+                // Restaurer le bouton
+                addBtn.innerHTML = originalText;
+                addBtn.disabled = false;
+            });
+        }
+    }
+    
+    // Fonction pour afficher une alerte dans le modal des compétences
+    function showAlert(type, message) {
+        const alertContainer = document.getElementById('skillsAlertContainer');
+        if (!alertContainer) {
+            console.warn('Container d\'alertes non trouvé');
+            return;
+        }
+        
+        const alertElement = document.createElement('div');
+        alertElement.className = `oh-alert oh-alert--animated oh-alert--${type} mb-3`;
+        alertElement.textContent = message;
+        
+        // Ajouter l'alerte au conteneur
+        alertContainer.appendChild(alertElement);
+        
+        // Supprimer l'alerte après 3 secondes
+        setTimeout(() => {
+            alertElement.remove();
+        }, 3000);
+    }
+    
+    // Modal functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    
+    // Fonction pour ouvrir le modal d'édition d'expérience avec les données existantes
+    function openEditExperienceModal(id) {
+        // Récupérer les données de l'expérience via Ajax
+        fetch(`/candidate-portal/profile/experience/${id}/get/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la récupération des données');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remplir le formulaire avec les données reçues
+                document.getElementById('editExperienceId').value = data.id;
+                document.getElementById('editJobTitle').value = data.job_title;
+                document.getElementById('editCompany').value = data.company;
+                document.getElementById('editIndustry').value = data.industry || '';
+                
+                // Formater les dates pour l'input month (YYYY-MM)
+                const startDate = new Date(data.start_date);
+                const startDateFormatted = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+                document.getElementById('editStartDate').value = startDateFormatted;
+                
+                if (data.end_date && !data.currently_working) {
+                    const endDate = new Date(data.end_date);
+                    const endDateFormatted = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+                    document.getElementById('editEndDate').value = endDateFormatted;
+                    document.getElementById('editEndDate').disabled = false;
+                } else {
+                    document.getElementById('editEndDate').value = '';
+                    document.getElementById('editEndDate').disabled = true;
+                }
+                
+                document.getElementById('editCurrentlyWorking').checked = data.currently_working;
+                document.getElementById('editDescription').value = data.description || '';
+                
+                // Ouvrir le modal
+                openModal('editExperienceModal');
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de la récupération des données');
+            });
+    }
+    
+    // Fonction pour ouvrir le modal d'édition de formation avec les données existantes
+    function openEditEducationModal(id) {
+        // Récupérer les données de la formation via Ajax
+        fetch(`/candidate-portal/profile/education/${id}/get/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la récupération des données');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remplir le formulaire avec les données reçues
+                document.getElementById('editEducationId').value = data.id;
+                document.getElementById('editDegree').value = data.degree;
+                document.getElementById('editInstitution').value = data.institution;
+                document.getElementById('editFieldOfStudy').value = data.field_of_study || '';
+                document.getElementById('editStartYear').value = data.start_year;
+                
+                if (data.end_year && !data.currently_studying) {
+                    document.getElementById('editEndYear').value = data.end_year;
+                    document.getElementById('editEndYear').disabled = false;
+                } else {
+                    document.getElementById('editEndYear').value = '';
+                    document.getElementById('editEndYear').disabled = true;
+                }
+                
+                document.getElementById('editCurrentlyStudying').checked = data.currently_studying;
+                document.getElementById('editEducationDescription').value = data.description || '';
+                
+                // Ouvrir le modal
+                openModal('editEducationModal');
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de la récupération des données');
+            });
+    }
+    
+    // Function to confirm deletion
+    function confirmDelete(type, id) {
+        const modal = document.getElementById('confirmDeleteModal');
+        const message = document.getElementById('deleteConfirmMessage');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        let itemType = '';
+        switch (type) {
+            case 'experience':
+                itemType = "cette expérience professionnelle";
+                break;
+            case 'education':
+                itemType = "cette formation";
+                break;
+            case 'document':
+                itemType = "ce document";
+                break;
+            default:
+                itemType = "cet élément";
+        }
+        
+        message.textContent = `Êtes-vous sûr de vouloir supprimer ${itemType} ?`;
+        
+        confirmBtn.onclick = function() {
+            window.location.href = `/candidate-portal/profile/${type}/${id}/delete/`;
+        };
+        
+        openModal('confirmDeleteModal');
+    }
+</script>
+{% endblock %}
+{% endblock %}

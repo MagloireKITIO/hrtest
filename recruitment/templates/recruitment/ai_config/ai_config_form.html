@@ -1,0 +1,251 @@
+<!-- recruitment/templates/recruitment/ai_config/ai_config_form.html -->
+{% load i18n %}
+
+<form
+    {% if config.id %}
+        hx-post="{% url 'ai-configuration-update' config.id %}"
+    {% else %}
+        hx-post="{% url 'ai-configuration-create' %}"
+    {% endif %}
+    hx-target="#aiConfigForm"
+    class="oh-profile-section"
+>
+    {% csrf_token %}
+    
+    <div class="oh-inner-sidebar-content__body">
+        <!-- Nom de la configuration -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.name.name}}" class="mb-1 required-star">{% trans "Nom de la configuration" %}</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+        </div>
+
+        <!-- Clé API avec contrôles sécurisés -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.api_key.name}}" class="mb-1 required-star">{% trans "Clé API Together AI" %}</label>
+            <div class="oh-input-group-append" style="position: relative;">
+                <input 
+                    type="password" 
+                    name="{{ form.api_key.name }}" 
+                    id="id_{{ form.api_key.name }}"
+                    class="oh-input w-100"
+                    style="padding-right: 80px;"
+                    placeholder="{% trans 'Clé API Together AI' %}"
+                    {% if config.api_key %}value="{{ config.api_key }}"{% endif %}
+                />
+                
+                <!-- Contrôles de la clé API -->
+                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px;">
+                    <!-- Bouton œil pour révéler/masquer -->
+                    <button 
+                        type="button" 
+                        class="oh-btn oh-btn--light oh-btn--xs"
+                        onclick="toggleApiKeyVisibility()"
+                        title="{% trans 'Afficher/Masquer la clé' %}"
+                        style="padding: 4px 6px; border: none; background: transparent;"
+                    >
+                        <ion-icon name="eye-outline" id="eyeIcon"></ion-icon>
+                    </button>
+                    
+                    <!-- Bouton copie -->
+                    <button 
+                        type="button" 
+                        class="oh-btn oh-btn--light oh-btn--xs"
+                        onclick="copyApiKey()"
+                        title="{% trans 'Copier la clé' %}"
+                        style="padding: 4px 6px; border: none; background: transparent;"
+                    >
+                        <ion-icon name="copy-outline" id="copyIcon"></ion-icon>
+                    </button>
+                </div>
+            </div>
+            {{ form.api_key.errors }}
+            <small class="oh-text--muted">
+                {% trans "Votre clé API Together AI" %}
+                {% if config.api_key %}
+                    <span class="oh-badge oh-badge--success oh-badge--sm ml-2">
+                        {% trans "Configurée" %} ({{ config.api_key|slice:":8" }}...{{ config.api_key|slice:"-4:" }})
+                    </span>
+                {% endif %}
+            </small>
+        </div>
+
+        <!-- Modèle -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.model_name.name}}" class="mb-1 required-star">{% trans "Nom du modèle" %}</label>
+            {{ form.model_name }}
+            {{ form.model_name.errors }}
+            <small class="oh-text--muted">{% trans "Exemple: deepseek-ai/DeepSeek-V3" %}</small>
+        </div>
+
+        <!-- Paramètres avancés -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="oh-input-group mb-3">
+                    <label for="id_{{form.max_tokens.name}}" class="mb-1">{% trans "Tokens maximum" %}</label>
+                    {{ form.max_tokens }}
+                    {{ form.max_tokens.errors }}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="oh-input-group mb-3">
+                    <label for="id_{{form.temperature.name}}" class="mb-1">{% trans "Température" %}</label>
+                    {{ form.temperature }}
+                    {{ form.temperature.errors }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt d'analyse -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.analysis_prompt.name}}" class="mb-1 required-star">{% trans "Prompt d'analyse" %}</label>
+            {{ form.analysis_prompt }}
+            {{ form.analysis_prompt.errors }}
+            <small class="oh-text--muted">{% trans "Utilisez {} comme placeholder pour la description du poste" %}</small>
+        </div>
+
+        <!-- Configuration par défaut -->
+        <div class="oh-input-group mb-3">
+            <div class="oh-switch">
+                <label for="id_{{form.is_default.name}}" class="mb-1 mr-3">{% trans "Configuration par défaut" %}</label>
+                {{ form.is_default }}
+            </div>
+            <small class="oh-text--muted">{% trans "Sera utilisée si aucune configuration spécifique n'est assignée à une filiale" %}</small>
+        </div>
+
+        <!-- Sélection des filiales -->
+        <div class="oh-input-group mb-3">
+            <label class="mb-2">{% trans "Filiales concernées" %}</label>
+            <div class="oh-checkbox-group">
+                {% for choice in form.companies %}
+                    <div class="oh-switch mb-2">
+                        {{ choice.tag }}
+                        <label for="{{ choice.id_for_label }}" class="ml-2">{{ choice.choice_label }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+            {{ form.companies.errors }}
+            <small class="oh-text--muted">{% trans "Laissez vide pour utiliser uniquement comme configuration par défaut" %}</small>
+        </div>
+    </div>
+
+    <div class="oh-modal__dialog-footer p-0 mt-3">
+        <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">
+            {% if config.id %}
+                {% trans "Mettre à jour" %}
+            {% else %}
+                {% trans "Créer" %}
+            {% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+    let apiKeyVisible = false;
+    
+    function toggleApiKeyVisibility() {
+        const apiKeyField = document.getElementById('id_api_key');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        if (apiKeyVisible) {
+            // Masquer la clé
+            apiKeyField.type = 'password';
+            eyeIcon.name = 'eye-outline';
+            apiKeyVisible = false;
+        } else {
+            // Révéler la clé
+            apiKeyField.type = 'text';
+            eyeIcon.name = 'eye-off-outline';
+            apiKeyVisible = true;
+        }
+    }
+    
+    function copyApiKey() {
+        const apiKeyField = document.getElementById('id_api_key');
+        const copyIcon = document.getElementById('copyIcon');
+        
+        if (apiKeyField.value) {
+            // Copier dans le presse-papiers
+            navigator.clipboard.writeText(apiKeyField.value).then(function() {
+                // Animation de confirmation
+                copyIcon.name = 'checkmark-outline';
+                copyIcon.style.color = '#28a745';
+                
+                // Retour à l'icône normale après 2 secondes
+                setTimeout(function() {
+                    copyIcon.name = 'copy-outline';
+                    copyIcon.style.color = '';
+                }, 2000);
+                
+                // Toast de confirmation
+                showToast('{% trans "Clé API copiée!" %}', 'success');
+            }).catch(function(err) {
+                console.error('Erreur copie:', err);
+                showToast('{% trans "Erreur lors de la copie" %}', 'error');
+            });
+        } else {
+            showToast('{% trans "Aucune clé à copier" %}', 'warning');
+        }
+    }
+    
+    // Fonction toast simple
+    function showToast(message, type) {
+        const toast = document.createElement('div');
+        toast.className = `oh-alert oh-alert--${type} oh-alert--animated`;
+        toast.style.cssText = `
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 9999; 
+            min-width: 250px;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        `;
+        toast.innerHTML = `
+            <div class="oh-alert__content">
+                <ion-icon name="${type === 'success' ? 'checkmark-circle' : type === 'error' ? 'close-circle' : 'information-circle'}"></ion-icon>
+                ${message}
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Animation d'apparition
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Suppression automatique après 3 secondes
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+    
+    // Validation en temps réel de la clé API
+    document.getElementById('id_api_key').addEventListener('blur', function() {
+        const apiKey = this.value;
+        if (apiKey && (apiKey.startsWith('a1c9fd0f') || apiKey.startsWith('sk-') || apiKey.startsWith('together_'))) {
+            // Indication visuelle que la clé semble valide
+            this.style.borderColor = '#28a745';
+        } else if (apiKey) {
+            this.style.borderColor = '#dc3545';
+        } else {
+            this.style.borderColor = '';
+        }
+    });
+
+    // Auto-ajustement de la hauteur du textarea pour le prompt
+    const promptTextarea = document.getElementById('id_analysis_prompt');
+    if (promptTextarea) {
+        promptTextarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+</script>

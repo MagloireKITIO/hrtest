@@ -1,0 +1,129 @@
+{% load static %}
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registration Form</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicons/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicons/favicon-16x16.png' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/css/intlTelInput.css">
+
+
+    <link rel="stylesheet" href="{% static 'build/css/style.min.css' %}" />
+    <style>
+      ul.errorlist {
+        color: #d9534f;
+        background-color: #f0d8d8;
+        border-color: #d6e9c6;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+      }
+      ul {
+        list-style-type: none;
+      }
+      .required-star::before {
+        content: "*";
+        padding-left: 5px;
+        color: #000;
+             
+    }
+    .iti {
+    width: 100%;
+    display: block;
+}
+.iti__flag-container {
+    z-index: 99;
+}
+.iti--separate-dial-code .iti__selected-flag {
+    background-color: transparent !important;
+    border-right: 1px solid #e9ecef;
+}
+.iti--separate-dial-code input.oh-input {
+    padding-left: 85px !important;
+}
+.iti__flag {
+    background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/img/flags.png");
+}
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .iti__flag {
+        background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/img/flags@2x.png");
+    }
+}
+    
+    
+    </style>
+
+    <script src="{% static '/jquery/jquery.min.js' %}"></script>
+  </head>
+  <body>
+    {% csrf_token %}
+    {% block content %}
+    {% endblock content %}
+
+    <script src="{% static 'build/js/web.frontend.min.js' %}"></script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"
+    ></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/js/intlTelInput.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/js/utils.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function initPhoneInput() {
+        const mobileInput = document.querySelector('input[name="mobile"]');
+        if (!mobileInput || mobileInput.dataset.initialized) return;
+
+        const iti = window.intlTelInput(mobileInput, {
+            separateDialCode: true,
+            initialCountry: "auto",
+            geoIpLookup: function(callback) {
+                fetch("https://ipapi.co/json")
+                .then(function(res) { return res.json(); })
+                .then(function(data) { callback(data.country_code); })
+                .catch(function() { callback("CM"); });
+            },
+            customPlaceholder: function(selectedCountryPlaceholder, selectedCountryData) {
+                return mobileInput.getAttribute('placeholder');
+            }
+        });
+
+        mobileInput.dataset.initialized = 'true';
+
+        // Validation à la perte de focus
+        mobileInput.addEventListener("blur", function() {
+            if (iti.isValidNumber()) {
+                mobileInput.classList.remove("error");
+            }
+        });
+
+        // Gestion de la soumission
+        const form = mobileInput.closest('form');
+        if (form && !form.dataset.phoneHandlerAttached) {
+            form.dataset.phoneHandlerAttached = 'true';
+            form.addEventListener('submit', function(e) {
+                if (iti.isValidNumber()) {
+                    mobileInput.value = iti.getNumber();
+                }
+            });
+        }
+    }
+
+    // Initialisation au chargement
+    initPhoneInput();
+
+    // Pour les chargements HTMX
+    document.body.addEventListener('htmx:afterOnLoad', initPhoneInput);
+});
+</script>
+  </body>
+</html>

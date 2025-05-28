@@ -1,0 +1,104 @@
+<!-- candidate_portal/templates/candidate_portal/emails/create_account.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créez votre compte candidat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        .content {
+            padding: 30px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #2563eb;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #1d4ed8;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        h1 {
+            color: #1f2937;
+            margin-top: 0;
+        }
+        p {
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://example.com/logo.png" alt="Logo" class="logo">
+            <h1>Suivez votre candidature</h1>
+        </div>
+        
+        <div class="content">
+            <p>Bonjour {{ candidate.name }},</p>
+            
+            <p>Merci d'avoir postulé pour le poste de <strong>{{ candidate.job_position_id }}</strong> chez <strong>{{ candidate.recruitment_id.company_id }}</strong>.</p>
+            
+            <p>Pour suivre l'avancement de votre candidature et rester informé de chaque étape du processus de recrutement, nous vous invitons à créer votre compte candidat en cliquant sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ register_url }}" class="button">Créer mon compte</a>
+            </div>
+            
+            <p>Ce lien est valable pendant 7 jours. Une fois votre compte créé, vous pourrez :</p>
+            
+            <ul>
+                <li>Suivre l'état de votre candidature</li>
+                <li>Consulter les commentaires des recruteurs</li>
+                <li>Être informé des prochaines étapes</li>
+                <li>Postuler facilement à d'autres offres</li>
+            </ul>
+            
+            <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
+            
+            <p>Cordialement,<br>L'équipe de recrutement</p>
+        </div>
+        
+        <div class="footer">
+            <p>Ce message a été envoyé automatiquement. Merci de ne pas y répondre.</p>
+            <p>Si vous n'êtes pas à l'origine de cette candidature, veuillez ignorer cet email.</p>
+        </div>
+    </div>
+</body>
+</html>

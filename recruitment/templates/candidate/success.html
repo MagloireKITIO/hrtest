@@ -1,0 +1,172 @@
+<!-- recruitment/templates/candidate/success.html -->
+{% load static %} {% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Application Success - ActivaHR</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicons/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicons/favicon-16x16.png' %}">
+    <link rel="stylesheet" href="{% static '/build/css/style.min.css' %}" />
+    
+    <style>
+        .oh-success-container {
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 2rem;
+        }
+
+        .oh-success-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            text-align: center;
+        }
+
+        .oh-success-icon {
+            color: #059669;
+            font-size: 40px;
+            margin-bottom: 1.5rem;
+        }
+
+        .oh-success-title {
+            color: #111827;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .oh-success-message {
+            color: #4B5563;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .oh-redirect-text {
+            font-size: 0.875rem;
+            color: #6B7280;
+            margin-bottom: 0.5rem;
+        }
+
+        .oh-countdown {
+            font-weight: 500;
+            color: #059669;
+        }
+        
+        .oh-action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .oh-btn-account {
+            background: #2563eb;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .oh-btn-account:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            color: white;
+        }
+        
+        .oh-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .oh-btn-secondary:hover {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="oh-success-container">
+        <div class="oh-success-card">
+            <div class="oh-success-icon">
+                <ion-icon name="checkmark-circle-outline"></ion-icon>
+            </div>
+            
+            <h1 class="oh-success-title">{% trans "Application Received" %}</h1>
+            
+            <p class="oh-success-message">{{ message }}</p>
+
+            {% if google_form_url %}
+                <p class="oh-redirect-text">
+                    {% trans "Redirecting to questionnaire in" %} 
+                    <span class="oh-countdown" id="countdown">5</span> 
+                    {% trans "seconds" %}
+                </p>
+            {% endif %}
+            
+            <!-- Boutons d'action avec conditionnelle pour utilisateurs existants -->
+            <div class="oh-action-buttons">
+                {% if user_exists %}
+                    <a href="{% url 'candidate_portal:login' %}" class="oh-btn-account">
+                        <ion-icon name="log-in-outline"></ion-icon>
+                        {% trans "Se connecter pour suivre votre candidature" %}
+                    </a>
+                {% elif token %}
+                    <a href="{% url 'candidate_portal:register' token=token.token %}" class="oh-btn-account">
+                        <ion-icon name="person-add-outline"></ion-icon>
+                        {% trans "Créer un compte pour suivre votre candidature" %}
+                    </a>
+                
+                {% endif %}
+                
+                <a href="{% url 'open-recruitments' %}" class="oh-btn-secondary">
+                    <ion-icon name="arrow-back-outline"></ion-icon>
+                    {% trans "Retour aux offres d'emploi" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static '/build/js/web.frontend.min.js' %}"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+
+    {% if google_form_url %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let timeLeft = 10;
+            const countdownElement = document.getElementById('countdown');
+            
+            const countdown = setInterval(function() {
+                timeLeft--;
+                countdownElement.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    window.location.href = "{{ google_form_url|escapejs }}";
+                }
+            }, 1000);
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

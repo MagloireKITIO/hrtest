@@ -1,0 +1,401 @@
+<!-- candidate_portal/templates/candidate_portal/base.html -->
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% trans "Espace Candidat" %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static '/build/css/style.min.css' %}" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --success-color: #059669;
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --background-color: #f8fafc;
+        }
+        
+        .candidate-sidebar {
+            width: 250px;
+            background: white;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid #e5e7eb;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .candidate-sidebar__header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .candidate-sidebar__logo {
+            height: 40px;
+        }
+        
+        .candidate-sidebar__nav {
+            padding: 1.5rem 0;
+        }
+        
+        .candidate-sidebar__nav-item {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #4b5563;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .candidate-sidebar__nav-item:hover,
+        .candidate-sidebar__nav-item.active {
+            background: #f3f4f6;
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .candidate-content {
+            margin-left: 250px;
+            padding: 2rem;
+            background: var(--background-color);
+            min-height: 100vh;
+        }
+        
+        .candidate-header {
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .candidate-header__title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .candidate-header__actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .candidate-user-menu {
+            position: relative;
+        }
+        
+        .candidate-user-menu__toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .candidate-user-menu__toggle:hover {
+            background: #f3f4f6;
+        }
+        
+        .candidate-user-menu__dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .candidate-user-menu__dropdown.show {
+            display: block;
+        }
+        
+        .candidate-user-menu__item {
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #4b5563;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .candidate-user-menu__item:hover {
+            background: #f3f4f6;
+            color: var(--primary-color);
+        }
+        
+        .candidate-user-menu__item--danger {
+            color: var(--danger-color);
+        }
+        
+        .candidate-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            height: 100%;
+        }
+        
+        .candidate-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .candidate-card__title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .candidate-card__icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        /* Responsive sidebar toggle */
+        .candidate-sidebar-toggle {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        /* Profile completion indicator in dropdown */
+        .profile-completion-indicator {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 0.5rem;
+        }
+        
+        .profile-completion-progress {
+            height: 6px;
+            background-color: #e5e7eb;
+            border-radius: 3px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+        
+        .profile-completion-progress-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .profile-completion-progress-bar.low {
+            background-color: var(--danger-color);
+        }
+        
+        .profile-completion-progress-bar.medium {
+            background-color: var(--warning-color);
+        }
+        
+        .profile-completion-progress-bar.high {
+            background-color: var(--success-color);
+        }
+        
+        .profile-completion-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        @media (max-width: 992px) {
+            .candidate-sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .candidate-sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .candidate-content {
+                margin-left: 0;
+            }
+            
+            .candidate-sidebar-toggle {
+                display: flex;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="candidate-sidebar" id="candidateSidebar">
+        <div class="candidate-sidebar__header">
+            <img src="{% static 'images/ui/user.jpg' %}" alt="Logo" class="candidate-sidebar__logo">
+            <button class="candidate-sidebar-close d-lg-none">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        
+        <nav class="candidate-sidebar__nav">
+            <a href="{% url 'candidate_portal:dashboard' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <ion-icon name="home-outline"></ion-icon>
+                <span>{% trans "Tableau de bord" %}</span>
+            </a>
+            <a href="{% url 'candidate_portal:applications' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'applications' %}active{% endif %}">
+                <ion-icon name="document-text-outline"></ion-icon>
+                <span>{% trans "Mes candidatures" %}</span>
+            </a>
+            <a href="{% url 'candidate_portal:jobs' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'jobs' %}active{% endif %}">
+                <ion-icon name="briefcase-outline"></ion-icon>
+                <span>{% trans "Offres d'emploi" %}</span>
+            </a>
+            <a href="{% url 'candidate_portal:messages' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'messages' %}active{% endif %}">
+                <ion-icon name="chatbubbles-outline"></ion-icon>
+                <span>{% trans "Messages" %}</span>
+            </a>
+            <a href="{% url 'candidate_portal:profile' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                <ion-icon name="person-outline"></ion-icon>
+                <span>{% trans "Mon profil" %}</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="candidate-content">
+        <!-- Header -->
+        <header class="candidate-header">
+            <h1 class="candidate-header__title">{% block header_title %}{% trans "Tableau de bord" %}{% endblock %}</h1>
+            
+            <div class="candidate-header__actions">
+                <div class="candidate-user-menu">
+                    <div class="candidate-user-menu__toggle" id="userMenuToggle">
+                        <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+                        <ion-icon name="chevron-down-outline"></ion-icon>
+                    </div>
+                    
+                    <div class="candidate-user-menu__dropdown" id="userMenuDropdown">
+                        <!-- Indicateur de complétion du profil -->
+                        <div class="profile-completion-indicator">
+                            <div class="profile-completion-text">
+                                <span>{% trans "Complétion du profil" %}</span>
+                                <span>{{ completion_percentage|default:0 }}%</span>
+                            </div>
+                            <div class="profile-completion-progress">
+                                <div class="profile-completion-progress-bar 
+                                    {% if completion_percentage < 40 %}low
+                                    {% elif completion_percentage < 70 %}medium
+                                    {% else %}high{% endif %}" 
+                                    style="width: {{ completion_percentage|default:0 }}%;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <a href="{% url 'candidate_portal:profile' %}" class="candidate-user-menu__item">
+                            <ion-icon name="person-outline"></ion-icon>
+                            <span>{% trans "Mon profil" %}</span>
+                        </a>
+                        <a href="{% url 'candidate_portal:settings' %}" class="candidate-sidebar__nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">                            <ion-icon name="settings-outline"></ion-icon>
+                            <span>{% trans "Paramètres" %}</span>
+                        </a>
+                        <a href="{% url 'candidate_portal:logout' %}" class="candidate-user-menu__item candidate-user-menu__item--danger">
+                            <ion-icon name="log-out-outline"></ion-icon>
+                            <span>{% trans "Déconnexion" %}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="candidate-page-content">
+            {% if messages %}
+                <div class="oh-alert-container">
+                    {% for message in messages %}
+                        <div class="oh-alert oh-alert--animated oh-alert--{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Mobile Sidebar Toggle -->
+    <div class="candidate-sidebar-toggle" id="sidebarToggle">
+        <ion-icon name="menu-outline"></ion-icon>
+    </div>
+
+    <script src="{% static '/build/js/web.frontend.min.js' %}"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+    
+    <script>
+        // User menu toggle
+        const userMenuToggle = document.getElementById('userMenuToggle');
+        const userMenuDropdown = document.getElementById('userMenuDropdown');
+        
+        userMenuToggle.addEventListener('click', function() {
+            userMenuDropdown.classList.toggle('show');
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (!userMenuToggle.contains(event.target) && !userMenuDropdown.contains(event.target)) {
+                userMenuDropdown.classList.remove('show');
+            }
+        });
+        
+        // Mobile sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const candidateSidebar = document.getElementById('candidateSidebar');
+        const sidebarClose = document.querySelector('.candidate-sidebar-close');
+        
+        sidebarToggle.addEventListener('click', function() {
+            candidateSidebar.classList.add('show');
+        });
+        
+        sidebarClose.addEventListener('click', function() {
+            candidateSidebar.classList.remove('show');
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

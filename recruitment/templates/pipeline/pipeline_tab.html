@@ -1,0 +1,45 @@
+
+    <ul class="oh-tabs__tablist">
+      {% for rec in recruitment %}
+      <li
+      class="oh-tabs__tab oh-tabs__tab"
+      data-target="#tab_rec_{{rec.id}}"
+      >
+        {{rec}}
+      </li>
+      {% endfor %}
+    </ul>
+
+
+    <script>
+      $(document).ready(function () {
+        var activeTab = localStorage.getItem('activeTabRecruitment')
+        if (activeTab != null) {
+          var tab  = $(`[data-target="${activeTab}"]`)
+          var tabContent = $(activeTab)
+          $(tab).attr('class', 'oh-tabs__tab oh-tabs__tab--active');
+          $(tabContent).attr('class', 'oh-tabs__content oh-tabs__content--active');
+        }
+        else{
+          $('[data-target="#tab_1"]').attr('class', 'oh-tabs__tab oh-tabs__tab--active');
+          $('#tab_rec_1').attr('class', 'oh-tabs__content oh-tabs__content--active');
+        }
+        $('.oh-tabs__tab').click(function (e) {
+  var activeTab = $(this).attr('data-target');
+  var recId = activeTab.split('_').pop();
+  localStorage.setItem('activeTabRecruitment', activeTab);
+  
+  // Charger uniquement les étapes de l'onglet actif
+  setTimeout(function() {
+    // Déclencher le chargement uniquement pour les étapes visibles
+    $(activeTab + ' .pipeline_items').each(function() {
+      if ($(this).is(':visible') && !$(this).data('loaded')) {
+        const event = new Event('htmx:load');
+        this.dispatchEvent(event);
+        $(this).data('loaded', true);
+      }
+    });
+  }, 100);
+});
+      });
+    </script>

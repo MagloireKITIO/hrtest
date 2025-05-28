@@ -1,0 +1,93 @@
+{% load i18n %} {% load basefilters %}{% load widget_tweaks %}
+{{ form.non_field_errors }}
+
+<style>
+  /* Style pour garder l'apparence exacte du champ oh-input */
+  .iti {
+      width: 100%;
+      display: block;
+  }
+  .iti__flag-container {
+      z-index: 99;
+  }
+  .iti--separate-dial-code .iti__selected-flag {
+      background-color: transparent !important;
+      border-right: 1px solid #e9ecef;
+  }
+  .iti--separate-dial-code input.oh-input {
+      padding-left: 85px !important;
+  }
+  .iti__flag {
+      background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/img/flags.png");
+  }
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      .iti__flag {
+          background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.13/img/flags@2x.png");
+      }
+  }
+  </style>
+  
+<!-- <div class="row mb-4">
+  <div class="col-12">
+    <div class="oh-input__group">
+      <label class="oh-label">{% trans "Permission Group" %}</label>
+      {{form.group}} {{form.group.errors}}
+    </div>
+  </div>
+</div> -->
+
+<div class="row">
+  {% for field in form %}
+    {% if field.label != "Employee profile" and field.label != 'Country' and field.label != 'State' and field.field.widget.input_type != 'checkbox' and field.label != 'Address' and field.label != 'Badge id' and field.label != 'Is Active' and field.label != 'Is Selector' and field.label != 'Needs Password Change' and field.label != 'Is Superuser' and field.label != 'Permission Group' %}
+      <div class="col-lg-6">
+        <div class="oh-input__group">
+          <label class="oh-label {% if field.field.required %}required-star{% endif %}" for="id_{{ field.name }}" title="{{ field.help_text|safe }}">
+            {{ field.label }}
+          </label>
+          {{ field|add_class:'form-control' }}
+          {{ field.errors }}
+        </div>
+      </div>
+    {% elif field.label == 'Address' %}
+      <div class="col-lg-12">
+        <div class="oh-input__group">
+          <label class="oh-label {% if field.field.required %}required-star{% endif %}" for="id_{{ field.name }}" title="{{ field.help_text|safe }}">
+            {{ field.label }}
+          </label>
+          {{ field }}
+          {{ field.errors }}
+        </div>
+      </div>
+    {% elif field.label == 'Country' %}
+      <!-- Code pays/état inchangé -->
+    {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Checkboxes sur une ligne -->
+<div class="row mt-3">
+  <div class="col-md-3">
+    <div class="oh-input__group">
+      <label class="oh-label">{% trans "Is Active" %}</label>
+      <div class="oh-switch">{{form.is_active}} {{form.is_active.errors}}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="oh-input__group">
+      <label class="oh-label">{% trans "Is Selector" %}</label>
+      <div class="oh-switch">{{form.is_selector}} {{form.is_selector.errors}}</div>
+    </div>
+  </div>
+  <!-- <div class="col-md-3">
+    <div class="oh-input__group">
+      <label class="oh-label">{% trans "Needs Password Change" %}</label>
+      <div class="oh-switch">{{form.needs_password_change}} {{form.needs_password_change.errors}}</div>
+    </div>
+  </div> -->
+  <div class="col-md-3">
+    <div class="oh-input__group">
+      <label class="oh-label">{% trans "Is Superuser" %}</label>
+      <div class="oh-switch">{{form.is_superuser}} {{form.is_superuser.errors}}</div>
+    </div>
+  </div>
+</div>

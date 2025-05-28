@@ -1,0 +1,394 @@
+<!-- candidate_portal/templates/candidate_portal/messages.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Messages" %} | {% trans "Espace Candidat" %}{% endblock %}
+{% block header_title %}{% trans "Messages" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .messages-container {
+        display: flex;
+        height: calc(100vh - 200px);
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .conversations-list {
+        width: 300px;
+        border-right: 1px solid #e5e7eb;
+        overflow-y: auto;
+    }
+    
+    .conversation-item {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+    
+    .conversation-item:hover, .conversation-item.active {
+        background: #f3f4f6;
+    }
+    
+    .conversation-item__header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+    
+    .conversation-item__title {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .conversation-item__date {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    
+    .conversation-item__preview {
+        color: #6b7280;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .conversation-item__unread {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #ef4444;
+        color: white;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+    }
+    
+    .chat-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-header {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .chat-header__title {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    
+    .chat-header__status {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        padding: 1rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .message {
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    
+    .message--sent {
+        background: #e9f2ff;
+        color: #1f2937;
+        align-self: flex-end;
+        border-bottom-right-radius: 0;
+    }
+    
+    .message--received {
+        background: #f3f4f6;
+        color: #1f2937;
+        align-self: flex-start;
+        border-bottom-left-radius: 0;
+    }
+    
+    .message__time {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-align: right;
+        margin-top: 0.25rem;
+    }
+    
+    .message__sender {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 0.25rem;
+    }
+    
+    .chat-input {
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+    }
+    
+    .chat-input__form {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .chat-input__textarea {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        resize: none;
+        height: 80px;
+        transition: border-color 0.3s ease;
+    }
+    
+    .chat-input__textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .chat-input__actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .empty-state__icon {
+        font-size: 4rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state__title {
+        font-size: 1.5rem;
+        color: #4b5563;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state__description {
+        color: #6b7280;
+        max-width: 400px;
+        margin: 0 auto 1.5rem;
+    }
+    
+    .no-conversations {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .mobile-toggle {
+        display: none;
+    }
+    
+    @media (max-width: 768px) {
+        .conversations-list {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 100;
+            width: 80%;
+            max-width: 300px;
+            background: white;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .conversations-list.show {
+            transform: translateX(0);
+        }
+        
+        .mobile-toggle {
+            display: block;
+            position: fixed;
+            bottom: 4rem;
+            left: 1rem;
+            z-index: 100;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% if conversations %}
+        <div class="messages-container">
+            <!-- Conversations List -->
+            <div class="conversations-list" id="conversationsList">
+                {% for conversation in conversations %}
+                    <div class="conversation-item {% if conversation.id == active_conversation.id %}active{% endif %}" data-id="{{ conversation.id }}" onclick="loadConversation({{ conversation.id }})">
+                        <div class="conversation-item__header">
+                            <div class="conversation-item__title">
+                                {{ conversation.recruitment.title }}
+                                {% if conversation.unread_count > 0 %}
+                                    <span class="conversation-item__unread">{{ conversation.unread_count }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="conversation-item__date">{{ conversation.created_at|date:"d/m/Y" }}</div>
+                        </div>
+                        <div class="conversation-item__preview">
+                            {% with last_message=conversation.messages.last %}
+                                {% if last_message %}
+                                    {% if last_message.sender_type == 'candidate' %}
+                                        <ion-icon name="send-outline" class="me-1"></ion-icon>
+                                    {% else %}
+                                        <ion-icon name="mail-outline" class="me-1"></ion-icon>
+                                    {% endif %}
+                                    {{ last_message.content|striptags|truncatechars:50 }}
+                                {% else %}
+                                    {% trans "Aucun message" %}
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea">
+                {% if active_conversation %}
+                    <div class="chat-header">
+                        <div>
+                            <div class="chat-header__title">{{ active_conversation.recruitment.title }}</div>
+                            <div class="chat-header__status">
+                                {% if active_conversation.is_active %}
+                                    <span class="oh-badge oh-badge--success">{% trans "Actif" %}</span>
+                                {% else %}
+                                    <span class="oh-badge oh-badge--danger">{% trans "Clôturé" %}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button class="oh-btn oh-btn--outline-primary oh-btn--sm d-md-none" onclick="toggleConversations()">
+                            <ion-icon name="list-outline"></ion-icon>
+                            {% trans "Conversations" %}
+                        </button>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        {% for message in messages %}
+                            <div class="message {% if message.sender_type == 'candidate' %}message--sent{% else %}message--received{% endif %}">
+                                {% if message.sender_type != 'candidate' %}
+                                    <div class="message__sender">{% trans "Recruteur" %}</div>
+                                {% endif %}
+                                <div>{{ message.content|safe }}</div>
+                                <div class="message__time">{{ message.timestamp|date:"d/m/Y H:i" }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="chat-input">
+                        <form method="post" action="{% url 'candidate_portal:conversation' active_conversation.id %}" class="chat-input__form">
+                            {% csrf_token %}
+                            <textarea name="content" class="chat-input__textarea" placeholder="{% trans 'Écrivez votre message...' %}" required></textarea>
+                            <div class="chat-input__actions">
+                                <button type="submit" class="oh-btn oh-btn--primary">
+                                    <ion-icon name="send"></ion-icon>
+                                    {% trans "Envoyer" %}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state__icon">
+                            <ion-icon name="chatbubbles-outline"></ion-icon>
+                        </div>
+                        <h3 class="empty-state__title">{% trans "Sélectionnez une conversation" %}</h3>
+                        <p class="empty-state__description">{% trans "Choisissez une conversation dans la liste pour voir les messages." %}</p>
+                        <button class="oh-btn oh-btn--primary d-md-none" onclick="toggleConversations()">
+                            <ion-icon name="list-outline"></ion-icon>
+                            {% trans "Voir les conversations" %}
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Mobile Toggle Button -->
+            <button class="mobile-toggle" id="mobileToggle" onclick="toggleConversations()">
+                <ion-icon name="chatbubbles-outline"></ion-icon>
+            </button>
+        </div>
+    {% else %}
+        <div class="no-conversations">
+            <div class="empty-state__icon">
+                <ion-icon name="chatbubbles-outline"></ion-icon>
+            </div>
+            <h3 class="empty-state__title">{% trans "Aucune conversation" %}</h3>
+            <p class="empty-state__description">{% trans "Vous n'avez pas encore de conversations. Les recruteurs vous contacteront ici concernant vos candidatures." %}</p>
+            <a href="{% url 'candidate_portal:applications' %}" class="oh-btn oh-btn--primary">
+                <ion-icon name="document-text-outline"></ion-icon>
+                {% trans "Voir mes candidatures" %}
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Scroll chat to bottom on load
+        scrollChatToBottom();
+    });
+    
+    function scrollChatToBottom() {
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+    
+    function loadConversation(conversationId) {
+        window.location.href = `/candidate-portal/messages/${conversationId}/`;
+    }
+    
+    function toggleConversations() {
+        const conversationsList = document.getElementById('conversationsList');
+        conversationsList.classList.toggle('show');
+    }
+</script>
+{% endblock %}

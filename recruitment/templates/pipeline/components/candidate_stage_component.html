@@ -1,0 +1,910 @@
+{% load i18n recruitmentfilters horillafilters %}
+
+<style>
+    .validated-candidate {
+        background-color: rgba(0, 255, 0, 0.519) !important;
+    }
+    .validated-candidate:hover {
+        background-color: rgba(0, 255, 0, 0.614) !important;
+    }
+    
+    /* Pour s'assurer que la classe est bien appliquée */
+    .oh-sticky-table__tr.validated-candidate {
+        background-color: rgba(0, 255, 0, 0.614) !important;
+    }
+    .bg-danger {
+    background-color: #ff4444 !important; /* Rouge vif pour les scores très faibles */
+}
+.bg-warning-orange {
+    background-color: #ff8800 !important; /* Orange pour les scores faibles */
+}
+.bg-warning {
+    background-color: #ffbb33 !important; /* Jaune-orange pour les scores moyens */
+}
+.bg-success {
+    background-color: #00C851 !important; /* Vert pour les bons scores */
+}
+.bg-info {
+    background-color: #33b5e5 !important; /* Bleu pour les excellents scores */
+}
+.bg-secondary {
+    background-color: #e0e0e0 !important; /* Gris clair pour les CV non pertinents */
+}
+
+.progress-bar {
+    color: #292929; /* Texte blanc pour meilleure lisibilité */
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Pour les barres de progression animées */
+.progress-bar-striped.progress-bar-animated {
+    background-color: #4285f4 !important; /* Bleu Google pour l'analyse en cours */
+}
+    
+</style>
+<!-- start of messages -->
+{% if messages %}
+<div class="oh-wrapper">
+  {% for message in messages %}
+  <div class="oh-alert-container">
+    <div class="oh-alert oh-alert--animated {{message.tags}}">
+      {{ message }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+<!-- end of messages -->
+
+<button
+    data-stage-toggle-id="{{stage.id}}"
+    id="stageLoad{{stage.id}}"
+    hx-get="{% url 'candidate-stage-component' %}?stage_id={{stage.id}}"
+    hx-target="#pipelineStageContainer{{stage.id}}"
+    hidden
+></button>
+<div class="oh-sticky-table oh-table--configurable candidate-table" id="candidateTable{{stage.id}}"
+    data-stage-id="{{stage.id}}">
+    <div class="oh-sticky-table__table oh-table__movable">
+        <div class="oh-sticky-table__thead">
+            <div class="oh-sticky-table__tr oh-table-config__tr">
+                <div class="oh-sticky-table__th" style="width: 30px;z-index: 12 !important;">
+                    <div class="centered-div">
+                        <input type="checkbox"
+                        onchange="
+                        if ($(this).is(':checked')) {
+                            $(this).closest('.oh-sticky-table').find('.candidate-checkbox').prop('checked',true).change();
+                        }else{
+                            $(this).closest('.oh-sticky-table').find('.candidate-checkbox').prop('checked',false).change();
+                        }"
+                        class="oh-input oh-input__checkbox stage-candidates"
+                            data-stage-id="{{stage.id}}" title="Select All" id="tick">
+                    </div>
+                </div>
+                <div class="oh-sticky-table__th oh-table-config__th" style="width: 150px;z-index: 11;">
+                    <span> {% trans "Candidate" %} </span>
+                </div>
+
+
+                <!-- <div class="oh-sticky-table__th oh-table-config__th {% if request.GET.orderby == '-score' %}arrow-up{% elif request.GET.orderby == 'score' %}arrow-down{% else %}arrow-up-down{% endif %}" 
+                    style="width: 100px;" 
+                    hx-get="{% url 'candidate-stage-component' %}?orderby={% if request.GET.orderby == 'score' %}-{% endif %}score&stage_id={{stage.id}}"
+                    hx-target="#pipelineStageContainer{{stage.id}}">
+                    {% trans "Score with keyword" %}
+                </div> -->
+
+                <div class="oh-sticky-table__th oh-table-config__th {% if request.GET.orderby == '-ai_score' %}arrow-up{% elif request.GET.orderby == 'ai_score' %}arrow-down{% else %}arrow-up-down{% endif %}" 
+                    style="width: 150px;" 
+                    hx-get="{% url 'candidate-stage-component' %}?orderby={% if request.GET.orderby == 'ai_score' %}-{% endif %}ai_score&stage_id={{stage.id}}"
+                    hx-target="#pipelineStageContainer{{stage.id}}">
+                    
+                    {% trans "Score with AI" %}
+                    {% if not request.user.employee_get.is_selector %}
+                        <button class="oh-btn oh-btn--light oh-btn--small"
+                                onclick="event.stopPropagation(); startAnalysis('{{stage.id}}')"
+                                title="{% trans 'Start AI Analysis' %}">
+                            <ion-icon name="analytics-outline"></ion-icon>
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="oh-sticky-table__th oh-table-config__th" style="width: 100px;">
+                    <span> {% trans "Scheduled Interviews" %} </span>
+                </div>
+
+                
+                <div class="oh-sticky-table__th oh-table-config__th" style="width: 100px;">
+                    {% trans "Stage" %}
+                </div>
+                
+                <div class="oh-sticky-table__th oh-table-config__th" style="width: 130px;">
+                    <!-- Masquer le select de bulk update pour les demandeurs -->
+                    {% if not request.user.employee_get.is_selector %}
+                        <select name="bulk_stage"
+                                onchange="
+                                if (this.value) {
+                                    preStageId= {{stage.id}}
+                                    stageId = this.value
+                                    candidateCheckBoxes = $(this).closest('.oh-sticky-table').find('.stage-candidate-row[type=checkbox]:checked')
+                                    if (!candidateCheckBoxes.length) {
+                                        Swal.fire({
+                                            title: 'No rows selected!',
+                                            icon: 'warning'
+                                        });
+                                    }else{
+                                        canIds=[]
+                                        $.each(candidateCheckBoxes, function(index, checkbox) {
+                                            canId=$(checkbox).val()
+                                            canIds.push($(checkbox).val())
+                                        });
+                                        bulkStageUpdate(canIds,stageId,preStageId)
+                                    }
+                                }
+                                "
+                                class="oh-select w-100" 
+                                data-stage-id="{{stage.id}}">
+                            <option value="" style="color: gray !important;" selected>
+                                {% trans "Stage bulk update" %}
+                            </option>
+                            {% for stage in rec.stage_set.all|dictsort:"sequence" %}
+                                <option value="{{stage.id}}">{{stage}}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        {% if not request.user.employee_get.is_selector and stage.stage_type == 'selector' %}
+                            <button class="oh-btn oh-btn--light oh-btn--small mt-2"
+                                onclick="selectValidatedCandidates()"
+                                    style="width: 100%">
+                                <ion-icon name="checkmark-circle-outline" class="me-1"></ion-icon>
+                                {% trans "Sélectionner les validés" %}
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                
+                    {% if request.user.employee_get.is_selector and stage.stage_type == 'selector' %}
+    <div class="oh-btn-group ml-2" style="display: flex; gap: 5px;">
+        <a href="#" class="oh-btn oh-btn--secondary"
+           id="validateButton-{{stage.id}}"
+           data-stage-id="{{stage.id}}"
+           style="height: 28px; padding: 0 10px;">
+            <ion-icon name="checkmark-circle-outline" class="mr-1 md hydrated"></ion-icon>
+            {% trans "Valider" %}
+        </a>
+        <a href="#" class="oh-btn oh-btn--danger"
+           id="unvalidateButton-{{stage.id}}"
+           data-stage-id="{{stage.id}}"
+           style="height: 28px; padding: 0 10px;">
+            <ion-icon name="close-circle-outline" class="mr-1 md hydrated"></ion-icon>
+            {% trans "Annuler" %}
+        </a>
+    </div>
+{% endif %}
+
+                    
+                </div>
+            </div>
+        </div>
+        <div hx-trigger="end" data-drag-htmx="true" hx-target="#pipelineStageContainer{{stage.id}}" hx-swap="none" hx-get="" class="hx-sortable oh-sticky-table__tbody oh-table--inter-sortable ui-sortable candidate-container"
+            data-container="candidate" data-container-list="candidate" data-stage-id="{{stage.id}}"
+            data-recruitment-id="{{rec.id}}" id="candidateContainer{{stage.id}}">
+            
+            {% for cand in candidates %}
+            <div onclick="window.location.href = '{% url 'candidate-view-individual' cand.id %}'"
+            class="oh-sticky-table__tr oh-table-config__tr candidate ui-droppable ui-sortable-handle cand {% if cand.selector_validations.filter.exists and cand.selector_validations.first.is_validated %}validated-candidate{% endif %}" 
+            data-candidate-id="{{cand.id}}"
+                data-drop="candidate"
+                data-change-cand-id="{{cand.id}}"
+                data-sequence="{{cand.sequence}}"
+                data-candidate="{{cand.name}}"
+                data-pre_stage_id ="{{cand.stage_id.id}}"
+                data-stage_order = '{{cand.recruitment_id.ordered_stages|to_json|safe}}'
+                data-job-position="{{cand.job_position_id}}">
+                
+
+                <div class="oh-sticky-table__sd" style="z-index: 11 !important;" onclick="event.stopPropagation()">
+                    <div class="centered-div">
+                        <input type="checkbox" id="{{cand.id}}"
+                            class="oh-input candidate-checkbox oh-input__checkbox stage-candidate-row" value="{{cand.id}}"
+                            onchange="highlightRow($(this));
+                            if (!$(this).is(':checked')) {
+                                $(this).closest('.oh-sticky-table').find('.stage-candidates').prop('checked',false);
+                            }
+                            ">
+                    </div>
+                    <input type="text" name="order" value="{{cand.id}}" hidden>
+                </div>
+               
+                <div class="oh-sticky-table__td oh-table-config__td"
+                    style="text-decoration: none;width: 400px !important;">
+                    {% for interview_schedule in cand.candidate_interview.all %}
+                        {% if interview_schedule.interview_date|date:"Y-m-d" == now|date:"Y-m-d" %}
+                            <div class="d-flex" style="flex-direction: row-reverse; margin-bottom:-30px;">
+                                <span class="tooltip">
+                                    <span class="material-symbols-outlined" style="flex-direction: row-reverse;color:green;">
+                                        alarm_on
+                                    </span>
+                                    <span class="tooltiptext fw-bold">
+                                        {% trans "INTERVIEW : Today at" %} {{interview_schedule.interview_time}} {% trans "with" %}
+                                        {% for emp in interview_schedule.employee_id.all %} {{emp}}, {% endfor %}
+                                    </span>
+                                </span>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <span title={% trans "Move" %}><ion-icon name="move"></ion-icon></span>
+
+                    <div class="oh-profile oh-profile--md">
+                        <div class="oh-profile__avatar mr-1">
+                            <img src="{{cand.get_avatar}}" class="oh-profile__image" alt="User" />
+                        </div>
+                        <span title="{{cand}}">{{cand|truncatechars:15}} </span>
+                    </div>
+                </div>
+
+                 <!-- shortlisting -->
+                <!-- <div class="oh-sticky-table__td oh-table-config__td">
+                    {% if cand.score %}
+                        {{ cand.score|floatformat:2 }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div> -->
+
+                <div class="oh-sticky-table__td oh-table-config__td">
+                    {% if cand.ai_analysis_status == 'completed' %}
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                {% if not cand.ai_analysis_details.job_matching.is_relevant %}
+                                    <div class="progress-bar bg-secondary" 
+                                         role="progressbar" 
+                                         style="width: 100%;"
+                                         aria-valuenow="0"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100"
+                                         title="{{ cand.ai_analysis_details.job_matching.reason }}">
+                                        0% - CV non pertinent
+                                    </div>
+                                {% else %}
+                                <div class="progress-bar 
+                                    {% if cand.ai_score <= 20 %}bg-danger        
+                                    {% elif cand.ai_score <= 40 %}bg-warning-orange 
+                                    {% elif cand.ai_score <= 60 %}bg-warning       
+                                    {% elif cand.ai_score <= 80 %}bg-success      
+                                    {% else %}bg-info{% endif %}"                  
+                                    role="progressbar"
+                                    style="width: {{ cand.ai_score }}%;"
+                                    aria-valuenow="{{ cand.ai_score }}"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100">
+                                {{ cand.ai_score }}%
+                            </div>
+                                {% endif %}
+                            </div>
+                            <button class="oh-btn oh-btn--light oh-btn--small" 
+                                    onclick="event.stopPropagation(); viewAnalysisDetails('{{cand.id}}')"
+                                    title="{% trans 'View Details' %}">
+                                <ion-icon name="eye-outline"></ion-icon>
+                            </button>
+                        </div>
+                    {% elif cand.ai_analysis_status == 'in_progress' %}
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar"
+                                    style="width: 100%">
+                                    {% trans "Analyzing..." %}
+                                </div>
+                            </div>
+                        </div>
+                    {% elif cand.ai_analysis_status == 'failed' %}
+                        <div class="d-flex align-items-center">
+                            <span class="text-danger me-2">{% trans "Analysis Failed" %}</span>
+                            <button class="oh-btn oh-btn--danger oh-btn--small" 
+                                    onclick="event.stopPropagation(); retryAnalysis('{{cand.id}}')"
+                                    title="{% trans 'Retry Analysis' %}">
+                                <ion-icon name="refresh-outline"></ion-icon>
+                            </button>
+                        </div>
+                    {% else %}
+                        <span class="text-muted">{% trans "Not analyzed" %}</span>
+                    {% endif %}
+                </div>
+
+                <div class="oh-sticky-table__td oh-table-config__td">
+                    {% trans "Interviews Scheduled" %} : {{cand.candidate_interview.count}}
+                </div>
+
+                <div onclick="event.stopPropagation()" class="oh-sticky-table__td oh-table-config__td">
+                    {% if request.user.employee_get.is_selector %}
+                        <!-- Pour les demandeurs, afficher seulement le nom de l'étape -->
+                        <span class="oh-text--dark">{{cand.stage_id}}</span>
+                    {% else %}
+                        <!-- Pour les recruteurs, garder le menu déroulant -->
+                        <select
+                            name="stage_id"
+                            onchange="checkSequence(this)"
+                            data-stage_id = {{stage.id}}
+                            data-cand_id = {{cand.id}}
+                            data-stage_order = '{{rec.ordered_stages|to_json|safe}}'
+                            id="stageChange{{cand.id}}"
+                            class="oh-select w-100"
+                            data-candidate-id="{{cand.id}}" 
+                            data-stage-id="{{stage.id}}">
+                            {% for sg in rec.ordered_stages %}
+                                <option value="{{sg.id}}" {% if sg == cand.stage_id %} selected{% endif %}>{{sg}}</option>
+                            {% endfor %}
+                        </select>
+                        <input onclick="setTimeout(() => {
+                            $('#stageReloadContainer{{rec.id}}').click()
+                            }, 100);" type="submit" hidden>
+                    {% endif %}
+                </div>
+                <div onclick="event.stopPropagation()" class="oh-sticky-table__td oh-table-config__td">
+                    <div class="oh-btn-group">
+                       
+                        <button type="button" hx-get='{% url "send-mail" cand.id %}' title="{% trans " Send Mail" %}"
+                            hx-target="#objectDetailsModalTarget" hx-swap="innerHTML" class="oh-btn oh-btn--light"
+                            data-toggle="oh-modal-toggle" data-target="#objectDetailsModal"
+                            onclick="$('#objectDetailsModal').addClass('oh-modal--show')"
+                            style="flex: 1 0 auto; width:20px;height: 40.68px; padding: 0;">
+                            <ion-icon name="mail-open-outline"></ion-icon>
+                        </button>
+                        <button type="button" class="oh-btn oh-btn--light-bkg w-100" title="{% trans 'To Skill zone' %}"
+                            data-toggle="oh-modal-toggle"
+                            hx-get="{% url 'to-skill-zone' cand.id %}"
+                            hx-target="#createTarget"
+                            hx-swap="innerHTML"
+                            data-target="#createModal"
+                            style="flex: 1 0 auto; width:25px !important;height: 40.68px; padding: 0;color: orangered;">
+                            <ion-icon name="heart-circle-outline"></ion-icon>
+                        </button>                        
+                        <a class="oh-btn oh-btn--light {% if not cand.resume.url %}oh-btn--disabled{% endif %}" href="{{cand.resume.url}}"
+                            target="_blank" title="{% trans " Resume" %}" rel="noopener noreferrer"
+                            style="flex: 1 0 auto; width:20px;height: 40.68px; padding: 0;"><ion-icon
+                                name="document-outline"></ion-icon>
+                            </a>
+
+                            {% if not request.user.employee_get.is_selector %}
+                            <button type="button" 
+                                    class="oh-btn oh-btn--light" 
+                                    onclick="selectValidatedCandidates()"
+                                    title="{% trans 'Sélectionner les candidats validés' %}"
+                                    style="flex: 1 0 auto; width:20px;height: 40.68px; padding: 0;">
+                                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                            </button>
+                            <button type="button" 
+                                class="oh-btn oh-btn--light-bkg w-100" 
+                                title="{% trans 'View In Calendar' %}"
+                                onclick="window.location.href='{% url 'interview-view' %}?view_type=calendar'"
+                                style="flex: 1 0 auto; width:25px !important;height: 40.68px; padding: 0;color: #4361ee;">
+                            <ion-icon name="calendar-outline"></ion-icon>
+                        </button>
+                        {% endif %}
+                            
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<script>
+    $("#stageCount{{stage.id}}").text({{candidates.paginator.count}})
+    $("#stageCount{{stage.id}}").attr("title",'{{candidates.paginator.count}} {% trans "Candidates" %}')
+</script>
+{% if candidates.number %}
+<div class="oh-pagination">
+    <span class="oh-pagination__page">
+        {% trans "Page" %} {{ candidates.number }} {% trans "of" %} {{ candidates.paginator.num_pages }}.
+    </span>
+    <nav class="oh-pagination__nav">
+        <div class="oh-pagination__input-container me-3">
+            <span class="oh-pagination__label me-1">{% trans "Page" %}</span>
+            <input type="number" name="candidate_page" class="oh-pagination__input"
+                value="{{candidates.number}}" hx-target="#pipelineStageContainer{{candidates.0.stage_id.id}}" hx-get="{% url 'candidate-stage-component' %}?{{pd}}&stage_id={{candidates.0.stage_id.id}}" min="1" />
+            <span class="oh-pagination__label">{% trans "of" %} {{candidates.paginator.num_pages}}</span>
+        </div>
+        <ul class="oh-pagination__items">
+            {% if candidates.has_previous %}
+            <li class="oh-pagination__item oh-pagination__item--wide">
+                <a hx-target="#pipelineStageContainer{{candidates.0.stage_id.id}}" hx-get="{% url 'candidate-stage-component' %}?{{pd}}&candidate_page=1&stage_id={{candidates.0.stage_id.id}}" class="oh-pagination__link">{% trans "First" %}</a>
+            </li>
+            <li class="oh-pagination__item oh-pagination__item--wide">
+                <a hx-target="#pipelineStageContainer{{candidates.0.stage_id.id}}" hx-get="{% url 'candidate-stage-component' %}?{{pd}}&candidate_page={{ candidates.previous_page_number }}&stage_id={{candidates.0.stage_id.id}}"
+                    class="oh-pagination__link">{% trans "Previous" %}</a>
+            </li>
+            {% endif %} {% if candidates.has_next %}
+            <li class="oh-pagination__item oh-pagination__item--wide">
+                <a hx-target="#pipelineStageContainer{{candidates.0.stage_id.id}}" hx-get="{% url 'candidate-stage-component' %}?{{pd}}&candidate_page={{ candidates.next_page_number }}&stage_id={{candidates.0.stage_id.id}}"
+                    class="oh-pagination__link">{% trans "Next" %}</a>
+            </li>
+            <li class="oh-pagination__item oh-pagination__item--wide">
+                <a hx-target="#pipelineStageContainer{{candidates.0.stage_id.id}}" hx-get="{% url 'candidate-stage-component' %}?{{pd}}&candidate_page={{ candidates.paginator.num_pages }}&stage_id={{candidates.0.stage_id.id}}"
+                    class="oh-pagination__link">{% trans "Last" %}</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+<script>
+    $("#stageCount{{candidates.first.stage_id.id}}").html("{{candidates.count}}")
+</script>
+
+<script>
+    $(document).ready(function() {
+        // Gestionnaire pour le bouton de validation
+        $('#validateButton{{stage.id}}').on('click', function() {
+            validateSelectedCandidates('{{stage.id}}');
+        });
+    
+        function validateSelectedCandidates(stageId) {
+            var selectedCandidates = [];
+            $('.candidate-checkbox:checked').each(function() {
+                selectedCandidates.push($(this).val());
+            });
+            
+            if (selectedCandidates.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '{% trans "Attention" %}',
+                    text: '{% trans "Veuillez sélectionner au moins un candidat" %}',
+                    confirmButtonText: '{% trans "Ok" %}'
+                });
+                return;
+            }
+    
+            Swal.fire({
+                title: '{% trans "Confirmer la validation" %}',
+                text: '{% trans "Êtes-vous sûr de vouloir valider les candidats sélectionnés ?" %}',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '{% trans "Oui, valider" %}',
+                cancelButtonText: '{% trans "Annuler" %}'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '{% url "validate-selected-candidates" %}',
+                        method: 'POST',
+                        data: {
+                            candidate_ids: selectedCandidates,
+                            stage_id: stageId,
+                            csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                        },
+                        beforeSend: function() {
+                            Swal.fire({
+                                title: '{% trans "Validation en cours..." %}',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+                        },
+                        success: function(response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '{% trans "Succès" %}',
+                                text: response.message,
+                                confirmButtonText: '{% trans "Ok" %}'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        },
+                        error: function(xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '{% trans "Erreur" %}',
+                                text: xhr.responseJSON?.message || '{% trans "Une erreur s\'est produite" %}',
+                                confirmButtonText: '{% trans "Ok" %}'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    });
+    </script>
+
+
+<script>
+function selectValidatedCandidates() {
+    $('.validated-candidate .candidate-checkbox').prop('checked', true);
+}
+</script>
+
+
+
+<script>
+    // Variables globales avec vérification d'existence
+    if (typeof window.analysisInProgress === 'undefined') {
+        window.analysisInProgress = false;
+    }
+    if (typeof window.pollInterval === 'undefined') {
+        window.pollInterval = null;
+    }
+    
+    // Fonction principale pour démarrer l'analyse
+    function startAnalysis(stageId) {
+        if (window.analysisInProgress) return;
+        
+        // On démarre par une confirmation
+        Swal.fire({
+            title: 'Confirmation',
+            text: 'Démarrer l\'analyse des candidats ?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Démarrer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.analysisInProgress = true;
+                
+                // Mettre à jour visuellement les candidats concernés avant même d'ouvrir la modal
+                updateCandidateUIBeforeAnalysis(stageId);
+                
+                // Puis montrer la progression
+                showAnalysisProgress(stageId);
+            }
+        });
+    }
+    
+    // Nouvelle fonction pour mettre à jour l'UI immédiatement
+    function updateCandidateUIBeforeAnalysis(stageId) {
+        try {
+            // Sélectionner tous les candidats de cette étape
+            const candidates = document.querySelectorAll(`#candidateContainer${stageId} .cand`);
+            
+            candidates.forEach(candidate => {
+                // Trouver la cellule qui contient le statut d'analyse (ajustez l'index si nécessaire)
+                const analysisCells = candidate.querySelectorAll('.oh-sticky-table__td');
+                let analysisCell = null;
+                
+                // Trouver la bonne cellule (celle contenant la barre de progression ou le texte "Not analyzed")
+                for (let cell of analysisCells) {
+                    if (cell.textContent.includes('Not analyzed') || 
+                        cell.textContent.includes('Analyzing') || 
+                        cell.querySelector('.progress-bar')) {
+                        analysisCell = cell;
+                        break;
+                    }
+                }
+                
+                if (analysisCell) {
+                    // Remplacer le contenu par un indicateur "En attente d'analyse"
+                    analysisCell.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar"
+                                    style="width: 100%">
+                                    Analyse en attente...
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Aussi, mettre à jour un indicateur global visible pour l'utilisateur
+            const stageHeader = document.querySelector(`.pipeline-header[data-stage-id="${stageId}"]`);
+            if (stageHeader) {
+                // Ajouter un badge d'analyse
+                const container = stageHeader.querySelector('.oh-tabs__input-badge-container');
+                if (container && !stageHeader.querySelector('.analysis-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className = 'oh-badge oh-badge--warning oh-badge--small analysis-badge ms-2';
+                    badge.textContent = 'Analyse en cours';
+                    container.appendChild(badge);
+                }
+            }
+        } catch (err) {
+            // Capturer les erreurs silencieusement sans bloquer l'exécution
+        }
+    }
+    
+    // Afficher la progression
+    function showAnalysisProgress(stageId) {
+        Swal.fire({
+            title: 'Analyse en cours',
+            html: `
+                <div id="analysisProgress">
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 100%">
+                        </div>
+                    </div>
+                    <div id="analysisStatus" class="mb-3">
+                        Initialisation de l'analyse...
+                    </div>
+                    <div id="analysisLog" class="text-left p-3" 
+                         style="max-height: 200px; overflow-y: auto; text-align: left; 
+                         background: #f8f9fa; border-radius: 4px;">
+                    </div>
+                </div>
+            `,
+            showCancelButton: false,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                startAnalysisProcess(stageId);
+            }
+        });
+    }
+    
+    // Lancer le processus d'analyse
+    async function startAnalysisProcess(stageId) {
+        try {
+            updateAnalysisLog("Démarrage de l'analyse...");
+            
+            const response = await fetch(`/recruitment/start-analysis/${stageId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            });
+    
+            const data = await response.json();
+    
+            if (data.status === 'info') {
+                window.analysisInProgress = false;
+                Swal.fire({
+                    title: 'Information',
+                    text: data.message,
+                    icon: 'info'
+                });
+                // Recharger l'étape pour rétablir l'affichage normal
+                forceReloadStage(stageId);
+                return;
+            }
+    
+            if (data.status === 'success') {
+                updateAnalysisLog(`${data.message}`);
+                startPolling(stageId, data.count);
+            } else {
+                throw new Error(data.message || "Erreur lors du démarrage de l'analyse");
+            }
+    
+        } catch (error) {
+            window.analysisInProgress = false;
+            Swal.fire({
+                title: 'Erreur',
+                text: error.message,
+                icon: 'error'
+            }).then(() => {
+                // Recharger l'étape pour rétablir l'affichage normal
+                forceReloadStage(stageId);
+            });
+        }
+    }
+    
+    // Force le rechargement d'une étape
+    function forceReloadStage(stageId) {
+        try {
+            const stageLoadButton = document.getElementById(`stageLoad${stageId}`);
+            if (stageLoadButton) {
+                stageLoadButton.click();
+            }
+        } catch (err) {
+            // Ignorer les erreurs silencieusement
+        }
+    }
+    
+    // Mise à jour du log d'analyse
+    function updateAnalysisLog(message) {
+        try {
+            const log = document.getElementById('analysisLog');
+            if (log) {
+                const timestamp = new Date().toLocaleTimeString();
+                log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+                log.scrollTop = log.scrollHeight;
+            }
+        } catch (err) {
+            // Ignorer les erreurs silencieusement
+        }
+    }
+    
+    // Polling du statut
+    function startPolling(stageId, totalCandidates) {
+        if (window.pollInterval) clearInterval(window.pollInterval);
+    
+        window.pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/recruitment/stage-analysis-status/${stageId}/`);
+                const data = await response.json();
+    
+                if (!response.ok) throw new Error(data.error || "Erreur de statut");
+    
+                const stats = data.stats;
+                
+                // Mise à jour du statut
+                const statusElement = document.getElementById('analysisStatus');
+                if (statusElement) {
+                    statusElement.innerHTML = `
+                        Analysés: ${stats.completed}/${totalCandidates}<br>
+                        En cours: ${stats.in_progress}<br>
+                        En attente: ${stats.pending}
+                    `;
+                }
+    
+                // Log de progression
+                updateAnalysisLog(`${stats.completed}/${totalCandidates} candidats analysés`);
+    
+                // Recharger les données du stage
+                forceReloadStage(stageId);
+    
+                // Vérifier si terminé
+                if (stats.in_progress === 0 && stats.pending === 0) {
+                    clearInterval(window.pollInterval);
+                    window.analysisInProgress = false;
+                    
+                    // Supprimer le badge d'analyse
+                    try {
+                        const analysisBadge = document.querySelector(`.pipeline-header[data-stage-id="${stageId}"] .analysis-badge`);
+                        if (analysisBadge) {
+                            analysisBadge.remove();
+                        }
+                    } catch (err) {
+                        // Ignorer les erreurs silencieusement
+                    }
+                    
+                    Swal.fire({
+                        title: 'Analyse terminée',
+                        text: `${stats.completed} candidat(s) ont été analysés. Voulez-vous recharger la page?`,
+                        icon: 'success',
+                        showCancelButton: true,
+                        confirmButtonText: 'Recharger',
+                        cancelButtonText: 'Plus tard'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
+                }
+    
+            } catch (error) {
+                // Supprimer le log d'erreur dans la console
+                updateAnalysisLog(`Erreur: ${error.message}`);
+            }
+        }, 2000);
+    }
+    
+    // Visualiser les détails d'analyse
+    function viewAnalysisDetails(candidateId) {
+        fetch(`/recruitment/analysis-details/${candidateId}/`)
+            .then(response => response.text())
+            .then(html => {
+                // Afficher dans le modal existant
+                document.getElementById('objectDetailsModalTarget').innerHTML = html;
+                document.getElementById('objectDetailsModal').classList.add('oh-modal--show');
+            })
+            .catch(error => {
+                // Supprimer le log d'erreur dans la console
+                Swal.fire({
+                    title: 'Erreur',
+                    text: 'Impossible de charger les détails',
+                    icon: 'error'
+                });
+            });
+    }
+    
+    // Relancer l'analyse
+    function retryAnalysis(candidateId) {
+        Swal.fire({
+            title: 'Relancer l\'analyse',
+            text: 'Êtes-vous sûr de vouloir relancer l\'analyse pour ce candidat ?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Relancer',
+            cancelButtonText: 'Annuler'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Trouver l'élément candidat et mettre à jour son apparence immédiatement
+                try {
+                    const candidateElement = document.querySelector(`.cand[data-candidate-id="${candidateId}"]`);
+                    if (candidateElement) {
+                        // Trouver la cellule d'analyse (celle contenant habituellement la barre de progression)
+                        const analysisCells = candidateElement.querySelectorAll('.oh-sticky-table__td');
+                        let analysisCell = null;
+                        
+                        for (let cell of analysisCells) {
+                            if (cell.textContent.includes('Analysis Failed') || 
+                                cell.textContent.includes('Not analyzed') || 
+                                cell.querySelector('.progress-bar')) {
+                                analysisCell = cell;
+                                break;
+                            }
+                        }
+                        
+                        if (analysisCell) {
+                            analysisCell.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                            role="progressbar"
+                                            style="width: 100%">
+                                            Relance de l'analyse...
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (err) {
+                    // Ignorer les erreurs silencieusement
+                }
+                
+                fetch(`/recruitment/retry-analysis/${candidateId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            title: 'Relancé',
+                            text: 'L\'analyse a été relancée',
+                            icon: 'success'
+                        });
+                        // Recharger le stage
+                        try {
+                            const candidateElement = document.querySelector(`.cand[data-candidate-id="${candidateId}"]`);
+                            const stageId = candidateElement?.closest('[data-stage-id]')?.dataset.stageId;
+                            if (stageId) {
+                                forceReloadStage(stageId);
+                            }
+                        } catch (err) {
+                            // Ignorer les erreurs silencieusement
+                        }
+                    } else {
+                        throw new Error(data.message || 'Erreur inconnue');
+                    }
+                })
+                .catch(error => {
+                    // Supprimer le log d'erreur dans la console
+                    Swal.fire({
+                        title: 'Erreur',
+                        text: error.message,
+                        icon: 'error'
+                    });
+                    // Recharger quand même pour rétablir l'affichage
+                    try {
+                        const candidateElement = document.querySelector(`.cand[data-candidate-id="${candidateId}"]`);
+                        const stageId = candidateElement?.closest('[data-stage-id]')?.dataset.stageId;
+                        if (stageId) {
+                            forceReloadStage(stageId);
+                        }
+                    } catch (err) {
+                        // Ignorer les erreurs silencieusement
+                    }
+                });
+            }
+        });
+    }
+    
+    // Utility function pour récupérer le CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Cleanup au déchargement de la page
+    window.addEventListener('beforeunload', () => {
+        if (window.pollInterval) clearInterval(window.pollInterval);
+    });
+    </script>

@@ -1,0 +1,47 @@
+{% if perms.employee.can_unblock_users %}
+<div class="oh-card">
+    <div class="oh-card__header">
+        <h5 class="oh-card__title">{% trans "Blocked Accounts" %}</h5>
+    </div>
+    <div class="oh-card__body">
+        {% if blocked_users %}
+            <div class="oh-table--responsive">
+                <table class="oh-table">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Employee" %}</th>
+                            <th>{% trans "Email" %}</th>
+                            <th>{% trans "Failed Attempts" %}</th>
+                            <th>{% trans "Last Attempt" %}</th>
+                            <th>{% trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in blocked_users %}
+                        <tr>
+                            <td>{{ employee.get_full_name }}</td>
+                            <td>{{ employee.email }}</td>
+                            <td>{{ employee.failed_login_attempts }}</td>
+                            <td>{{ employee.employee_user_id.last_login|default:"-" }}</td>
+                            <td>
+                                <button 
+                                    class="oh-btn oh-btn--success"
+                                    hx-post="{% url 'unblock-user' employee.id %}"
+                                    hx-confirm="{% trans 'Are you sure you want to unblock this user?' %}"
+                                >
+                                    {% trans "Unblock" %}
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="oh-alert oh-alert--info">
+                {% trans "No blocked accounts found." %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

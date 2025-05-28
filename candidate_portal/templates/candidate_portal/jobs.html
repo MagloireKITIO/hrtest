@@ -1,0 +1,644 @@
+<!-- candidate_portal/templates/candidate_portal/jobs.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Offres d'emploi" %} | {% trans "Espace Candidat" %}{% endblock %}
+{% block header_title %}{% trans "Offres d'emploi" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .job-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .job-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .job-card__header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+        position: relative;
+    }
+    
+    .job-card__title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+    
+    .job-card__company {
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .job-card__type {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .job-card__type--full {
+        background: rgba(5, 150, 105, 0.1);
+        color: #059669;
+    }
+    
+    .job-card__type--part {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+    
+    .job-card__type--contract {
+        background: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+    }
+    
+    .job-card__type--internship {
+        background: rgba(139, 92, 246, 0.1);
+        color: #8b5cf6;
+    }
+    
+    .job-card__body {
+        padding: 1.5rem;
+    }
+    
+    .job-card__description {
+        color: #4b5563;
+        margin-bottom: 1.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .job-card__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .job-card__tag {
+        background: #f3f4f6;
+        color: #4b5563;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+    }
+    
+    .job-card__footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .job-card__date {
+        color: #6b7280;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .job-card__location {
+        color: #6b7280;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .job-card__save {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 32px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+    
+    .job-card__save:hover {
+        background: rgba(255, 255, 255, 1);
+    }
+    
+    .job-card__save--active {
+        color: #ef4444;
+    }
+    
+    .job-filter {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .job-filter__title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0.75rem;
+    }
+    
+    .job-filter__group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .job-filter__label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .job-view-toggle {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .job-view-toggle__button {
+        background: #f3f4f6;
+        border: none;
+        border-radius: 4px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .job-view-toggle__button:hover, .job-view-toggle__button.active {
+        background: #2563eb;
+        color: white;
+    }
+    
+    .badge-new {
+        position: absolute;
+        top: 0;
+        left: 1rem;
+        background: #ef4444;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 0 0 4px 4px;
+        font-weight: 500;
+    }
+    
+    .badge-applied {
+        position: absolute;
+        top: 0;
+        left: 1rem;
+        background: #059669;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 0 0 4px 4px;
+        font-weight: 500;
+    }
+    
+    .job-filter-mobile {
+        position: fixed;
+        bottom: 1rem;
+        left: 1rem;
+        z-index: 100;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+    }
+    
+    .no-jobs {
+        text-align: center;
+        padding: 3rem;
+    }
+    
+    .no-jobs__icon {
+        font-size: 4rem;
+        color: #9ca3af;
+        margin-bottom: 1rem;
+    }
+    
+    .no-jobs__title {
+        font-size: 1.5rem;
+        color: #4b5563;
+        margin-bottom: 0.5rem;
+    }
+    
+    .no-jobs__description {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 992px) {
+        .job-filter-mobile {
+            display: flex;
+        }
+        
+        .job-filter {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 300px;
+            height: 100vh;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .job-filter.show {
+            left: 0;
+        }
+        
+        .job-filter__close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Filter Button Mobile -->
+    <button class="job-filter-mobile" id="filterToggle">
+        <ion-icon name="options-outline"></ion-icon>
+    </button>
+    
+    <div class="row">
+        <!-- Filters Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="job-filter" id="jobFilter">
+                <button class="job-filter__close d-lg-none" id="filterClose">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+                
+                <h4 class="job-filter__title">{% trans "Filtres" %}</h4>
+                
+                <form method="get" action="{% url 'candidate_portal:jobs' %}">
+                    <div class="job-filter__group">
+                        <label class="job-filter__label">{% trans "Type d'emploi" %}</label>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="fullTime" name="job_type" value="full_time" {% if 'full_time' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="fullTime">{% trans "Temps plein" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="partTime" name="job_type" value="part_time" {% if 'part_time' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="partTime">{% trans "Temps partiel" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="contract" name="job_type" value="contract" {% if 'contract' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="contract">{% trans "Contrat" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="internship" name="job_type" value="internship" {% if 'internship' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="internship">{% trans "Stage" %}</label>
+                        </div>
+                    </div>
+                    
+                    <div class="job-filter__group">
+                        <label class="job-filter__label">{% trans "Mode de travail" %}</label>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="onSite" name="work_location" value="on_site" {% if 'on_site' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="onSite">{% trans "Sur site" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="remote" name="work_location" value="remote" {% if 'remote' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="remote">{% trans "Télétravail" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="hybrid" name="work_location" value="hybrid" {% if 'hybrid' in request.GET %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="hybrid">{% trans "Hybride" %}</label>
+                        </div>
+                    </div>
+                    
+                    <div class="job-filter__group">
+                        <label class="job-filter__label">{% trans "Département" %}</label>
+                        <select class="oh-select w-100" name="department" id="department">
+                            <option value="">{% trans "Tous les départements" %}</option>
+                            {% for department in departments %}
+                                <option value="{{ department.id }}" {% if request.GET.department == department.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ department.department }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="job-filter__group">
+                        <label class="job-filter__label">{% trans "Statut" %}</label>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="showApplied" name="show_applied" value="true" {% if request.GET.show_applied == 'true' %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="showApplied">{% trans "Afficher les offres auxquelles j'ai postulé" %}</label>
+                        </div>
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="onlySaved" name="only_saved" value="true" {% if request.GET.only_saved == 'true' %}checked{% endif %}>
+                            <label class="oh-checkbox__label" for="onlySaved">{% trans "Seulement mes favoris" %}</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="oh-btn oh-btn--primary w-100">
+                        <ion-icon name="search-outline"></ion-icon>
+                        {% trans "Appliquer les filtres" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Jobs Listing -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">{% trans "Offres trouvées:" %} {{ jobs|length }}</h4>
+                    <p class="text-muted mb-0">{% trans "Trouvez votre prochain défi professionnel" %}</p>
+                </div>
+                
+                <div class="job-view-toggle">
+                    <button class="job-view-toggle__button active" data-view="grid">
+                        <ion-icon name="grid-outline"></ion-icon>
+                    </button>
+                    <button class="job-view-toggle__button" data-view="list">
+                        <ion-icon name="list-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
+            
+            {% if jobs %}
+                <div class="row" id="jobsGrid">
+                    {% for job in jobs %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="job-card">
+                                {% if job.created_at|timesince|slice:":2" == "0 " or job.created_at|timesince|slice:":1" == "1" %}
+                                    <div class="badge-new">{% trans "Nouveau" %}</div>
+                                {% endif %}
+                                
+                                {% if job.id in applied_jobs %}
+                                    <div class="badge-applied">{% trans "Postulé" %}</div>
+                                {% endif %}
+                                
+                                <div class="job-card__header">
+                                    <h3 class="job-card__title">{{ job.title }}</h3>
+                                    <div class="job-card__company">
+                                        <ion-icon name="business-outline"></ion-icon>
+                                        <span>{{ job.company_id.company }}</span>
+                                    </div>
+                                    
+                                    {% for position in job.open_positions.all %}
+                                        <span class="job-card__type job-card__type--full">{{ position.job_position }}</span>
+                                    {% endfor %}
+                                    
+                                    <form method="post" action="{% url 'candidate_portal:toggle_save_job' job.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="job-card__save {% if job.id in saved_job_ids %}job-card__save--active{% endif %}">
+                                            <ion-icon name="{% if job.id in saved_job_ids %}heart{% else %}heart-outline{% endif %}"></ion-icon>
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <div class="job-card__body">
+                                    <p class="job-card__description">{{ job.description|truncatechars:150 }}</p>
+                                    
+                                    <div class="job-card__tags">
+                                        {% for skill in job.skills.all|slice:":3" %}
+                                            <span class="job-card__tag">{{ skill.title }}</span>
+                                        {% endfor %}
+                                        
+                                        {% if job.skills.count > 3 %}
+                                            <span class="job-card__tag">+ {{ job.skills.count|add:"-3" }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="job-card__footer">
+                                    <div class="job-card__date">
+                                        <ion-icon name="calendar-outline"></ion-icon>
+                                        <span>{{ job.created_at|date:"d/m/Y" }}</span>
+                                    </div>
+                                    
+                                    <a href="{% url 'application-form' %}?recruitmentId={{ job.id }}" class="oh-btn oh-btn--primary oh-btn--sm">
+                                        {% trans "Postuler" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- List View (Hidden by Default) -->
+                <div class="row d-none" id="jobsList">
+                    <div class="col-12">
+                        {% for job in jobs %}
+                            <div class="job-card mb-3">
+                                <div class="row g-0">
+                                    <div class="col-md-9">
+                                        <div class="job-card__header">
+                                            {% if job.created_at|timesince|slice:":2" == "0 " or job.created_at|timesince|slice:":1" == "1" %}
+                                                <div class="badge-new">{% trans "Nouveau" %}</div>
+                                            {% endif %}
+                                            
+                                            {% if job.id in applied_jobs %}
+                                                <div class="badge-applied">{% trans "Postulé" %}</div>
+                                            {% endif %}
+                                            
+                                            <h3 class="job-card__title">{{ job.title }}</h3>
+                                            <div class="job-card__company">
+                                                <ion-icon name="business-outline"></ion-icon>
+                                                <span>{{ job.company_id.company }}</span>
+                                            </div>
+                                            
+                                            {% for position in job.open_positions.all %}
+                                                <span class="job-card__type job-card__type--full">{{ position.job_position }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <div class="job-card__body">
+                                            <p class="job-card__description">{{ job.description|truncatechars:200 }}</p>
+                                            
+                                            <div class="job-card__tags">
+                                                {% for skill in job.skills.all|slice:":5" %}
+                                                    <span class="job-card__tag">{{ skill.title }}</span>
+                                                {% endfor %}
+                                                
+                                                {% if job.skills.count > 5 %}
+                                                    <span class="job-card__tag">+ {{ job.skills.count|add:"-5" }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3 d-flex flex-column justify-content-between">
+                                        <div class="job-card__footer border-top-0 d-flex flex-column align-items-start">
+                                            <div class="job-card__date mb-2">
+                                                <ion-icon name="calendar-outline"></ion-icon>
+                                                <span>{{ job.created_at|date:"d/m/Y" }}</span>
+                                            </div>
+                                            
+                                            <form method="post" action="{% url 'candidate_portal:toggle_save_job' job.id %}" class="mb-3">
+                                                {% csrf_token %}
+                                                <button type="submit" class="oh-btn oh-btn--outline-secondary oh-btn--sm">
+                                                    <ion-icon name="{% if job.id in saved_job_ids %}heart{% else %}heart-outline{% endif %}"></ion-icon>
+                                                    {% if job.id in saved_job_ids %}
+                                                        {% trans "Retirer des favoris" %}
+                                                    {% else %}
+                                                        {% trans "Ajouter aux favoris" %}
+                                                    {% endif %}
+                                                </button>
+                                            </form>
+                                            
+                                            <a href="{% url 'application-form' %}?recruitmentId={{ job.id }}" class="oh-btn oh-btn--primary oh-btn--sm">
+                                                {% trans "Postuler" %}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="no-jobs">
+                    <div class="no-jobs__icon">
+                        <ion-icon name="search-outline"></ion-icon>
+                    </div>
+                    <h3 class="no-jobs__title">{% trans "Aucune offre d'emploi trouvée" %}</h3>
+                    <p class="no-jobs__description">{% trans "Essayez de modifier vos critères de recherche ou revenez plus tard." %}</p>
+                    <a href="{% url 'candidate_portal:jobs' %}" class="oh-btn oh-btn--primary">
+                        <ion-icon name="refresh-outline"></ion-icon>
+                        {% trans "Réinitialiser les filtres" %}
+                    </a>
+                </div>
+            {% endif %}
+            
+            <!-- Pagination -->
+            {% if jobs.has_other_pages %}
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if jobs.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ jobs.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for i in jobs.paginator.page_range %}
+                            {% if jobs.number == i %}
+                                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if jobs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ jobs.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Toggle between grid and list view
+    document.addEventListener('DOMContentLoaded', function() {
+        const gridBtn = document.querySelector('[data-view="grid"]');
+        const listBtn = document.querySelector('[data-view="list"]');
+        const gridView = document.getElementById('jobsGrid');
+        const listView = document.getElementById('jobsList');
+        
+        gridBtn.addEventListener('click', function() {
+            gridView.classList.remove('d-none');
+            listView.classList.add('d-none');
+            gridBtn.classList.add('active');
+            listBtn.classList.remove('active');
+            localStorage.setItem('jobViewPreference', 'grid');
+        });
+        
+        listBtn.addEventListener('click', function() {
+            gridView.classList.add('d-none');
+            listView.classList.remove('d-none');
+            listBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+            localStorage.setItem('jobViewPreference', 'list');
+        });
+        
+        // Check for saved preference
+        const savedView = localStorage.getItem('jobViewPreference');
+        if (savedView === 'list') {
+            listBtn.click();
+        }
+        
+        // Mobile filter toggle
+        const filterToggle = document.getElementById('filterToggle');
+        const filterClose = document.getElementById('filterClose');
+        const jobFilter = document.getElementById('jobFilter');
+        
+        if (filterToggle) {
+            filterToggle.addEventListener('click', function() {
+                jobFilter.classList.add('show');
+            });
+        }
+        
+        if (filterClose) {
+            filterClose.addEventListener('click', function() {
+                jobFilter.classList.remove('show');
+            });
+        }
+    });
+</script>
+{% endblock %}

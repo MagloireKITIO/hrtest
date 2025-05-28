@@ -1,0 +1,171 @@
+<!-- recruitment/templates/recruitment/ai_config/ai_config_view.html -->
+{% extends 'settings.html' %}
+{% load i18n %}
+{% block settings %}
+{% load static %}
+
+<div class="oh-inner-sidebar-content">
+    <div class="oh-inner-sidebar-content__header d-flex justify-content-between align-items-center">
+        <h2 class="oh-inner-sidebar-content__title">{% trans "Configuration IA" %}</h2>
+        {% if perms.recruitment.add_aiconfiguration %}
+        <button
+            class="oh-btn oh-btn--secondary oh-btn--shadow"
+            data-toggle="oh-modal-toggle"
+            data-target="#aiConfigModal"
+            hx-get="{% url 'ai-configuration-create' %}"
+            hx-target="#aiConfigForm"
+        >
+            <ion-icon name="add-outline" class="me-1"></ion-icon>
+            {% trans "Créer" %}
+        </button>
+        {% endif %}
+    </div>
+
+    {% if configurations %}
+    <div class="oh-sticky-table">
+        <div class="oh-sticky-table__table">
+            <div class="oh-sticky-table__thead">
+                <div class="oh-sticky-table__tr">
+                    <div class="oh-sticky-table__th">{% trans "Nom" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Modèle" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Filiales" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Par défaut" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Statut" %}</div>
+                    {% if perms.recruitment.change_aiconfiguration or perms.recruitment.delete_aiconfiguration %}
+                    <div class="oh-sticky-table__th oh-sticky-table__right">{% trans "Actions" %}</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="oh-sticky-table__tbody">
+                {% for config in configurations %}
+                <div class="oh-sticky-table__tr">
+                    <div class="oh-sticky-table__td">
+                        <strong>{{ config.name }}</strong>
+                    </div>
+                    <div class="oh-sticky-table__td">
+                        <code class="oh-text--muted">{{ config.model_name }}</code>
+                    </div>
+                    <div class="oh-sticky-table__td">
+                        {% if config.companies.all %}
+                            {% for company in config.companies.all %}
+                                <span class="oh-badge oh-badge--info oh-badge--sm">{{ company.company }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="oh-text--muted">{% trans "Aucune filiale" %}</span>
+                        {% endif %}
+                    </div>
+                    <div class="oh-sticky-table__td">
+                        {% if config.is_default %}
+                            <span class="oh-badge oh-badge--success">{% trans "Par défaut" %}</span>
+                        {% else %}
+                            <form method="post" action="{% url 'ai-configuration-toggle-default' config.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="oh-btn oh-btn--light oh-btn--xs">
+                                    {% trans "Définir par défaut" %}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                    <div class="oh-sticky-table__td">
+                        {% if config.is_active %}
+                            <span class="oh-badge oh-badge--success">{% trans "Actif" %}</span>
+                        {% else %}
+                            <span class="oh-badge oh-badge--danger">{% trans "Inactif" %}</span>
+                        {% endif %}
+                    </div>
+                    {% if perms.recruitment.change_aiconfiguration or perms.recruitment.delete_aiconfiguration %}
+                    <div class="oh-sticky-table__td oh-sticky-table__right">
+                        <div class="oh-btn-group">
+                            {% if perms.recruitment.change_aiconfiguration %}
+                            <button
+                                data-toggle="oh-modal-toggle"
+                                data-target="#aiConfigTestModal"
+                                hx-get="{% url 'ai-configuration-test' config.id %}"
+                                hx-target="#aiConfigTestForm"
+                                class="oh-btn oh-btn--light-bkg"
+                                title="{% trans 'Tester' %}"
+                            >
+                                <ion-icon name="flask-outline"></ion-icon>
+                            </button>
+                            <button
+                                data-toggle="oh-modal-toggle"
+                                data-target="#aiConfigEditModal"
+                                hx-get="{% url 'ai-configuration-update' config.id %}"
+                                hx-target="#aiConfigEditForm"
+                                class="oh-btn oh-btn--light-bkg"
+                                title="{% trans 'Modifier' %}"
+                            >
+                                <ion-icon name="create-outline"></ion-icon>
+                            </button>
+                            {% endif %}
+                            {% if perms.recruitment.delete_aiconfiguration and not config.is_default %}
+                            <form 
+                                action="{% url 'ai-configuration-delete' config.id %}"
+                                method="post"
+                                style="display: inline;"
+                                onsubmit="return confirm('{% trans "Êtes-vous sûr de vouloir supprimer cette configuration ?" %}');"
+                            >
+                                {% csrf_token %}
+                                <button type="submit" class="oh-btn oh-btn--danger-outline oh-btn--light-bkg" title="{% trans 'Supprimer' %}">
+                                    <ion-icon name="trash-outline"></ion-icon>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 400px;">
+        <img style="display: block; width: 15%; margin: 20px auto; filter: opacity(0.5);" 
+             src="{% static 'images/ui/ai.png' %}" alt="Configuration IA" />
+        <h5 class="oh-404__subtitle">{% trans "Aucune configuration IA n'est définie." %}</h5>
+        <p class="oh-text--muted">{% trans "Créez votre première configuration pour commencer l'analyse automatique des CV." %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Création -->
+<div class="oh-modal" id="aiConfigModal" role="dialog">
+    <div class="oh-modal__dialog oh-modal__dialog--lg">
+        <div class="oh-modal__dialog-header">
+            <h2 class="oh-modal__dialog-title">{% trans "Créer une configuration IA" %}</h2>
+            <button class="oh-modal__close" aria-label="Close">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <div class="oh-modal__dialog-body" id="aiConfigForm"></div>
+    </div>
+</div>
+
+<!-- Modal Modification -->
+<div class="oh-modal" id="aiConfigEditModal" role="dialog">
+    <div class="oh-modal__dialog oh-modal__dialog--lg">
+        <div class="oh-modal__dialog-header">
+            <h2 class="oh-modal__dialog-title">{% trans "Modifier la configuration IA" %}</h2>
+            <button class="oh-modal__close" aria-label="Close">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <div class="oh-modal__dialog-body" id="aiConfigEditForm"></div>
+    </div>
+</div>
+
+<!-- Modal Test -->
+<div class="oh-modal" id="aiConfigTestModal" role="dialog">
+    <div class="oh-modal__dialog oh-modal__dialog--lg">
+        <div class="oh-modal__dialog-header">
+            <h2 class="oh-modal__dialog-title">{% trans "Tester la configuration IA" %}</h2>
+            <button class="oh-modal__close" aria-label="Close">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <div class="oh-modal__dialog-body" id="aiConfigTestForm"></div>
+    </div>
+</div>
+
+{% endblock settings %}

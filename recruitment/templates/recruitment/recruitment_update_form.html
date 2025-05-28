@@ -1,0 +1,453 @@
+<!-- recruitment/templates/recruitment/recruitment_update_form.html - Fichier complet final -->
+
+{% load i18n %}
+<script>
+      function skillChange(selectElement) {
+          var selectedSkill = selectElement.val();
+          var parentForm = selectElement.parents().closest("form");
+          if (selectedSkill && selectedSkill.includes("create")) {
+              let dynamicskills = $("#dynamicSkills");
+              var view = parentForm.serialize();
+              dynamicskills.attr("hx-vals", `{"data":"${view}"}`);
+              dynamicskills.click();
+          }
+      }
+      $(document).ready(function(){
+          $("[name= 'skills']").on("change", function(){
+              skillChange($(this))
+          })
+      });
+      {% if dynamic %}
+      setTimeout(function () {
+        $('#dynamicCreateModal').removeClass('oh-modal--show');
+      }, 500);
+    {% endif %}
+</script>
+
+<script>
+    $(document).ready(function() {
+        function formatOption(option) {
+            if (!option.id) {
+                return option.text;
+            }
+            var $option = $('<span></span>').text(option.text);
+            if (option.id === 'create') {
+                $option.addClass('text-info');
+            }
+            return $option;
+        }
+        $('[name = "skills"]').select2({
+            templateResult: formatOption,
+            templateSelection: formatOption
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('#id_selectors').select2({
+            placeholder: "{% trans 'Select Selectors' %}",
+            allowClear: true,
+            width: '100%'
+        });
+        
+        $('[data-toggle="tooltip"]').tooltip({
+            trigger: 'hover'
+        });
+
+        $('.select2-container').css('z-index', 9999);
+    });
+</script>
+
+<style>
+    .internal-recruitment {
+        position: relative;
+    }
+    
+    .internal-recruitment::after {
+        content: '🔒';
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+    }
+    
+    .external-recruitment {
+        position: relative;
+    }
+    
+    .external-recruitment::after {
+        content: '🌐';
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+    }
+    
+    .auto-calculated {
+        background-color: #e8f5e8 !important;
+        border-left: 3px solid #28a745 !important;
+    }
+    
+    .auto-calculated:focus {
+        background-color: #e8f5e8 !important;
+    }
+    
+    #validity-info-update {
+        font-size: 0.875rem;
+    }
+</style>
+
+{% if messages %}
+<div class="oh-alert-container">
+    {% for message in messages %}
+    <div class="oh-alert oh-alert--animated {{message.tags}}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="oh-modal__dialog-header pb-0">
+    <h5 class="oh-modal__dialog-title" id="addRecruitmentModalLabel">
+        {% trans "Edit Recruitment" %}
+    </h5>
+    <button class="oh-modal__close" aria-label="Close">
+        <ion-icon name="close-outline"></ion-icon>
+    </button>
+</div>
+
+<div class="oh-modal__dialog-body" id="addRecruitmentModalBody">
+    <form hx-post="{% url 'recruitment-update' form.instance.id %}" hx-target="#objectUpdateModalTarget" class="oh-general__tab-target oh-profile-section">
+        {% csrf_token %}
+        <div>
+            <div class="row" id="recruitmentUpdateContainer">
+                {% for error in form.non_field_errors %}
+                    <ul class="errorlist">
+                        <li>{{error}}</li>
+                    </ul>
+                {% endfor %}
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-12">
+                    <label class="oh-label" for="">
+                        {% trans "Title" %}
+                        <span class="text-danger">*</span>
+                    </label>
+                    {{form.title}} {{form.title.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-12">
+                    <label class="oh-label" for="">
+                        {% trans "Description" %}
+                        <span class="text-danger">*</span>
+                    </label>
+                    {{form.description}} {{form.description.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6" id="openPositionUpdateContainer">
+                    <label class="oh-label" for="">
+                        {% trans "Job Position" %}
+                        <span class="text-danger">*</span>
+                    </label>
+                    {{form.open_positions}} {{form.open_positions.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="{{ form.recruitment_managers.id_for_label }}">
+                        {% trans "Recruitment manager" %}
+                    </label>
+                    {{ form.recruitment_managers }}
+                    {{ form.recruitment_managers.errors }}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="selectors">
+                        {% trans "Demandeur" %}
+                    </label>
+                    <select name="selectors" id="selectors" multiple class="oh-select oh-select-2 select2-hidden-accessible" data-placeholder="{% trans 'Select' %}">
+                        {% for employee in form.selectors.field.queryset %}
+                            {% if employee.is_selector %}
+                                <option value="{{ employee.id }}" 
+                                    {% if employee.id in form.selectors.value %}selected{% endif %}>
+                                    {{ employee.get_full_name }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    {{ form.selectors.errors }}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="{{form.recruitment_type.id_for_label}}">
+                        {% trans "Recruitment Type" %}
+                    </label>
+                    {{form.recruitment_type}}
+                    {% if form.recruitment_type.errors %}
+                        <div class="invalid-feedback d-block">{{form.recruitment_type.errors}}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Champ Durée de validité -->
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="{{form.validity_duration.id_for_label}}" title="{{form.validity_duration.help_text|safe}}">
+                        {% trans "Durée de validité" %}
+                    </label>
+                    {{form.validity_duration}}
+                    {% if form.validity_duration.errors %}
+                        <div class="invalid-feedback d-block">{{form.validity_duration.errors}}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Champs de dates -->
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label required-star" for="{{form.start_date.id_for_label}}">
+                        {% trans "Start Date" %}
+                    </label>
+                    {{form.start_date}}
+                    {{form.start_date.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="{{form.end_date.id_for_label}}">
+                        {% trans "End Date" %}
+                    </label>
+                    {{form.end_date}}
+                    {{form.end_date.errors}}
+                </div>
+                
+                <!-- Message d'aide contextuel -->
+                <div class="col-12">
+                    <div class="oh-alert oh-alert--info mt-2" id="validity-info-update" style="display: none;">
+                        <small>
+                            <ion-icon name="information-circle-outline"></ion-icon>
+                            <span id="validity-message-update"></span>
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label" for="">{% trans "Vacancy" %}</label>
+                    {{form.vacancy}} {{form.vacancy.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label" for="">{% trans "Company" %}</label>
+                    {{form.company_id}} {{form.company_id.errors}}
+                </div>
+
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_is_published" title="{{form.is_published.help_text|safe}}">{% trans "Is Published?" %}</label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.is_published}}</div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_optional_profile_image" title="{{form.optional_profile_image.help_text|safe}}">
+                        {% trans "Optional Profile Image?" %}
+                    </label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.optional_profile_image}}</div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_optional_motivation" title="{{form.optional_motivation.help_text|safe}}">{% trans "Optional Motivation Letter?" %}</label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.optional_motivation}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex flex-row-reverse">
+            <button type="submit" class="mt-4 pl-5 pr-5 oh-btn oh-btn--secondary">
+                {% trans "Save" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+$(document).ready(function() {
+    const recruitmentTypeSelect = $('[name="recruitment_type"]');
+    const vacancyInput = $('[name="vacancy"]');
+    
+    recruitmentTypeSelect.on('change', function() {
+        const recruitmentType = $(this).val();
+        const parentContainer = $(this).closest('.col-lg-6');
+        
+        parentContainer.removeClass('internal-recruitment external-recruitment');
+        
+        if (recruitmentType === 'INTERNAL') {
+            parentContainer.addClass('internal-recruitment');
+            if (vacancyInput.val() === '') {
+                vacancyInput.val('1');
+            }
+        } else if (recruitmentType === 'EXTERNAL') {
+            parentContainer.addClass('external-recruitment');
+        }
+    });
+    
+    recruitmentTypeSelect.trigger('change');
+});
+
+// Script principal pour la gestion des dates dans le formulaire de MODIFICATION
+$(document).ready(function() {
+    const validityDurationSelect = $('[name="validity_duration"]');
+    const startDateInput = $('[name="start_date"]');
+    const endDateInput = $('[name="end_date"]');
+    const validityInfo = $('#validity-info-update');
+    const validityMessage = $('#validity-message-update');
+    
+    // Sauvegarder les valeurs initiales (dates enregistrées)
+    const originalStartDate = startDateInput.val();
+    const originalEndDate = endDateInput.val();
+    
+    console.log('=== FORMULAIRE DE MODIFICATION ===');
+    console.log('Date de début enregistrée:', originalStartDate);
+    console.log('Date de fin enregistrée:', originalEndDate);
+    
+    // Fonction pour calculer et mettre à jour la date de fin (MODIFICATION)
+    function updateEndDateForEdit() {
+        const duration = parseInt(validityDurationSelect.val());
+        const startDate = startDateInput.val();
+        
+        console.log('Recalcul - Durée:', duration, 'Date début:', startDate);
+        
+        if (duration > 0 && startDate) {
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + duration);
+            
+            const formattedDate = end.toISOString().split('T')[0];
+            endDateInput.val(formattedDate);
+            
+            endDateInput.prop('readonly', true);
+            endDateInput.addClass('auto-calculated');
+            
+            const selectedText = validityDurationSelect.find('option:selected').text();
+            validityMessage.text(`{% trans "Date de fin recalculée automatiquement basée sur" %} ${selectedText}.`);
+            validityInfo.show();
+            
+            console.log('Nouvelle date de fin calculée:', formattedDate);
+        } else if (duration === 0) {
+            endDateInput.prop('readonly', false);
+            endDateInput.removeClass('auto-calculated');
+            
+            validityMessage.text('{% trans "Mode personnalisé : vous pouvez modifier manuellement les dates." %}');
+            validityInfo.show();
+            
+            console.log('Mode personnalisé activé');
+        } else {
+            validityInfo.hide();
+        }
+    }
+    
+    // Fonction pour détecter la durée actuelle basée sur les dates existantes
+    function detectCurrentDuration() {
+        if (originalStartDate && originalEndDate) {
+            const start = new Date(originalStartDate);
+            const end = new Date(originalEndDate);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            console.log('Détection durée - Différence en jours:', diffDays);
+            
+            // Vérifier si la durée correspond à un choix prédéfini
+            const validityOptions = validityDurationSelect.find('option');
+            let foundMatch = false;
+            
+            validityOptions.each(function() {
+                const optionValue = parseInt($(this).val());
+                if (optionValue === diffDays && optionValue > 0) {
+                    validityDurationSelect.val(optionValue);
+                    foundMatch = true;
+                    console.log('Durée détectée automatiquement:', optionValue, 'jours');
+                    return false; // Break the loop
+                }
+            });
+            
+            if (!foundMatch) {
+                validityDurationSelect.val(0); // Personnalisé
+                console.log('Mode personnalisé détecté (durée non standard)');
+            }
+        }
+    }
+    
+    // Fonction pour afficher les informations de validité
+    function showValidityInfoForEdit() {
+        const duration = parseInt(validityDurationSelect.val());
+        const selectedText = validityDurationSelect.find('option:selected').text();
+        
+        if (duration > 0) {
+            validityMessage.text(`{% trans "Durée prédéfinie:" %} ${selectedText}. {% trans "Modifiez les dates si nécessaire." %}`);
+            validityInfo.show();
+        } else if (duration === 0) {
+            validityMessage.text('{% trans "Mode personnalisé : les dates sont modifiables manuellement." %}');
+            validityInfo.show();
+        } else {
+            validityInfo.hide();
+        }
+    }
+    
+    // Gérer les changements de durée de validité
+    validityDurationSelect.on('change', function() {
+        const duration = parseInt($(this).val());
+        console.log('Changement de durée:', duration);
+        
+        if (duration > 0) {
+            // L'utilisateur a choisi une durée prédéfinie, recalculer à partir de la date de début actuelle
+            updateEndDateForEdit();
+        } else {
+            // Mode personnalisé, garder les dates existantes
+            endDateInput.prop('readonly', false);
+            endDateInput.removeClass('auto-calculated');
+            showValidityInfoForEdit();
+        }
+    });
+    
+    // Gérer les changements de date de début
+    startDateInput.on('change', function() {
+        const duration = parseInt(validityDurationSelect.val());
+        console.log('Changement date début, durée actuelle:', duration);
+        if (duration > 0) {
+            updateEndDateForEdit();
+        }
+    });
+    
+    // Gérer les modifications manuelles de la date de fin
+    endDateInput.on('change', function() {
+        const duration = parseInt(validityDurationSelect.val());
+        if (duration === 0) {
+            // En mode personnalisé, accepter les modifications
+            validityMessage.text('{% trans "Dates personnalisées utilisées." %}');
+            validityInfo.show();
+        }
+    });
+    
+    // Permettre la modification manuelle quand "Personnalisé" est sélectionné
+    endDateInput.on('focus', function() {
+        const duration = parseInt(validityDurationSelect.val());
+        if (duration === 0) {
+            $(this).prop('readonly', false);
+            $(this).removeClass('auto-calculated');
+        }
+    });
+    
+    // Initialisation au chargement de la page pour le formulaire de modification
+    console.log('=== INITIALISATION ===');
+    
+    // 1. D'abord détecter la durée actuelle basée sur les dates enregistrées
+    detectCurrentDuration();
+    
+    // 2. Puis afficher les informations appropriées (sans recalculer les dates)
+    showValidityInfoForEdit();
+    
+    // NOTE IMPORTANTE: On ne recalcule PAS automatiquement au chargement 
+    // pour préserver les dates enregistrées. Le recalcul ne se fait que si 
+    // l'utilisateur change explicitement la durée ou la date de début.
+});
+</script>

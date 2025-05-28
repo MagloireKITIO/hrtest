@@ -1,0 +1,453 @@
+<!-- candidate_portal/templates/candidate_portal/settings.html -->
+{% extends "candidate_portal/base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Paramètres" %} | {% trans "Espace Candidat" %}{% endblock %}
+{% block header_title %}{% trans "Paramètres" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .settings-card__header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .settings-card__title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    
+    .settings-card__description {
+        color: #6b7280;
+        margin: 0.5rem 0 0;
+    }
+    
+    .settings-card__body {
+        padding: 1.5rem;
+    }
+    
+    .settings-section {
+        margin-bottom: 2rem;
+    }
+    
+    .settings-section:last-child {
+        margin-bottom: 0;
+    }
+    
+    .settings-section__title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .settings-field {
+        margin-bottom: 1.5rem;
+    }
+    
+    .settings-field:last-child {
+        margin-bottom: 0;
+    }
+    
+    .settings-field__label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .settings-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    
+    .settings-toggle__label {
+        font-weight: 500;
+        color: #374151;
+    }
+    
+    .settings-toggle__description {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
+        margin: 0;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e5e7eb;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: #2563eb;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+    }
+    
+    .notification-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .notification-item:last-child {
+        border-bottom: none;
+    }
+    
+    .notification-item__info {
+        flex: 1;
+    }
+    
+    .notification-item__title {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notification-item__description {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+    
+    .danger-zone {
+        background-color: rgba(239, 68, 68, 0.05);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        border-radius: 6px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .danger-zone__title {
+        color: #ef4444;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .danger-zone__description {
+        color: #4b5563;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Account Settings -->
+            <div class="settings-card">
+                <div class="settings-card__header">
+                    <h3 class="settings-card__title">{% trans "Compte et Sécurité" %}</h3>
+                    <p class="settings-card__description">{% trans "Gérez les paramètres de votre compte et les options de sécurité" %}</p>
+                </div>
+                
+                <div class="settings-card__body">
+                    <form method="post" action="{% url 'candidate_portal:update_password' %}">
+                        {% csrf_token %}
+                        <div class="settings-section">
+                            <h4 class="settings-section__title">{% trans "Modification du mot de passe" %}</h4>
+                            
+                            <div class="settings-field">
+                                <label for="currentPassword" class="settings-field__label">{% trans "Mot de passe actuel" %}</label>
+                                <input type="password" id="currentPassword" name="current_password" class="oh-input w-100" required>
+                            </div>
+                            
+                            <div class="settings-field">
+                                <label for="newPassword" class="settings-field__label">{% trans "Nouveau mot de passe" %}</label>
+                                <input type="password" id="newPassword" name="new_password" class="oh-input w-100" required>
+                            </div>
+                            
+                            <div class="settings-field">
+                                <label for="confirmPassword" class="settings-field__label">{% trans "Confirmer le mot de passe" %}</label>
+                                <input type="password" id="confirmPassword" name="confirm_password" class="oh-input w-100" required>
+                            </div>
+                            
+                            <button type="submit" class="oh-btn oh-btn--primary">
+                                <ion-icon name="save-outline"></ion-icon>
+                                {% trans "Mettre à jour le mot de passe" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Notification Settings -->
+            <div class="settings-card">
+                <div class="settings-card__header">
+                    <h3 class="settings-card__title">{% trans "Notifications" %}</h3>
+                    <p class="settings-card__description">{% trans "Contrôlez quand et comment vous recevez des notifications" %}</p>
+                </div>
+                
+                <div class="settings-card__body">
+                    <form method="post" action="{% url 'candidate_portal:update_notifications' %}">
+                        {% csrf_token %}
+                        
+                        <div class="settings-toggle mb-4">
+                            <div>
+                                <div class="settings-toggle__label">{% trans "Notifications par e-mail" %}</div>
+                                <div class="settings-toggle__description">{% trans "Recevoir des notifications par e-mail" %}</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="email_notifications" {% if profile.email_notifications %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4 class="settings-section__title">{% trans "Types de notifications" %}</h4>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Mise à jour des candidatures" %}</div>
+                                    <div class="notification-item__description">{% trans "Notifications quand une candidature change de statut" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="application_updates" {% if profile.application_updates %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Nouveaux messages" %}</div>
+                                    <div class="notification-item__description">{% trans "Notifications quand vous recevez un nouveau message" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="new_messages" {% if profile.new_messages %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Planification d'entretien" %}</div>
+                                    <div class="notification-item__description">{% trans "Notifications pour les entretiens programmés" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="interview_schedules" {% if profile.interview_schedules %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Offres recommandées" %}</div>
+                                    <div class="notification-item__description">{% trans "Notifications pour les nouvelles offres qui correspondent à votre profil" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="job_recommendations" {% if profile.job_recommendations %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4 class="settings-section__title">{% trans "Fréquence des notifications" %}</h4>
+                            
+                            <div class="settings-field">
+                                <label class="settings-field__label">{% trans "Résumé des notifications" %}</label>
+                                <select class="oh-select w-100" name="notification_frequency">
+                                    <option value="immediately" {% if profile.notification_frequency == 'immediately' %}selected{% endif %}>{% trans "Immédiatement" %}</option>
+                                    <option value="daily" {% if profile.notification_frequency == 'daily' %}selected{% endif %}>{% trans "Résumé quotidien" %}</option>
+                                    <option value="weekly" {% if profile.notification_frequency == 'weekly' %}selected{% endif %}>{% trans "Résumé hebdomadaire" %}</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="oh-btn oh-btn--primary">
+                            <ion-icon name="save-outline"></ion-icon>
+                            {% trans "Enregistrer les préférences" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Privacy Settings -->
+            <div class="settings-card">
+                <div class="settings-card__header">
+                    <h3 class="settings-card__title">{% trans "Confidentialité" %}</h3>
+                    <p class="settings-card__description">{% trans "Gérez la visibilité de vos informations personnelles" %}</p>
+                </div>
+                
+                <div class="settings-card__body">
+                    <form method="post" action="{% url 'candidate_portal:update_privacy' %}">
+                        {% csrf_token %}
+                        
+                        <div class="settings-toggle mb-4">
+                            <div>
+                                <div class="settings-toggle__label">{% trans "Profil visible pour les recruteurs" %}</div>
+                                <div class="settings-toggle__description">{% trans "Autoriser les recruteurs à trouver votre profil lors de recherches" %}</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="profile_visible" {% if profile.profile_visible %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4 class="settings-section__title">{% trans "Informations partagées" %}</h4>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Coordonnées personnelles" %}</div>
+                                    <div class="notification-item__description">{% trans "Téléphone, adresse, etc." %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="share_contact_info" {% if profile.share_contact_info %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Expérience professionnelle" %}</div>
+                                    <div class="notification-item__description">{% trans "Emplois précédents et actuel" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="share_experience" {% if profile.share_experience %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="notification-item">
+                                <div class="notification-item__info">
+                                    <div class="notification-item__title">{% trans "Formation" %}</div>
+                                    <div class="notification-item__description">{% trans "Études et diplômes" %}</div>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="share_education" {% if profile.share_education %}checked{% endif %}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="oh-btn oh-btn--primary">
+                            <ion-icon name="save-outline"></ion-icon>
+                            {% trans "Enregistrer les préférences" %}
+                        </button>
+                        
+                        <div class="danger-zone">
+                            <h4 class="danger-zone__title">{% trans "Zone de danger" %}</h4>
+                            <p class="danger-zone__description">{% trans "Ces actions sont irréversibles. Soyez prudent." %}</p>
+                            
+                            <a href="#" class="oh-btn oh-btn--danger" onclick="confirmDataDeletion()">
+                                <ion-icon name="trash-outline"></ion-icon>
+                                {% trans "Supprimer mon compte" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="oh-modal" id="deletionModal">
+        <div class="oh-modal-dialog">
+            <div class="oh-modal-content">
+                <div class="oh-modal-header">
+                    <h5 class="oh-modal-title">{% trans "Confirmer la suppression" %}</h5>
+                    <button type="button" class="oh-modal-close" onclick="closeModal('deletionModal')">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+                <div class="oh-modal-body">
+                    <p>{% trans "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront définitivement supprimées." %}</p>
+                    
+                    <div class="mt-3">
+                        <div class="oh-checkbox mb-2">
+                            <input type="checkbox" class="oh-checkbox__input" id="confirmDelete">
+                            <label class="oh-checkbox__label" for="confirmDelete">{% trans "Je comprends que cette action est irréversible" %}</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="oh-modal-footer">
+                    <button type="button" class="oh-btn oh-btn--secondary" onclick="closeModal('deletionModal')">{% trans "Annuler" %}</button>
+                    <form method="post" action="{% url 'candidate_portal:delete_account' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="oh-btn oh-btn--danger" id="deleteAccountBtn" disabled>{% trans "Supprimer définitivement" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Function to open and close modals
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    
+    function confirmDataDeletion() {
+        openModal('deletionModal');
+        
+        // Handle confirm checkbox
+        const confirmCheckbox = document.getElementById('confirmDelete');
+        const deleteBtn = document.getElementById('deleteAccountBtn');
+        
+        confirmCheckbox.addEventListener('change', function() {
+            deleteBtn.disabled = !this.checked;
+        });
+    }
+</script>
+{% endblock %}

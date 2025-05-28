@@ -1,0 +1,119 @@
+{% load i18n static %}
+
+<div class="oh-card">
+  <div id="calendar"></div>
+  <div id="calendarError" class="alert alert-danger" style="display:none;"></div>
+</div>
+
+<link href='https://cdn.jsdelivr.net/npm/@fullcalendar/core/main.css' rel='stylesheet' />
+<link href='https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid/main.css' rel='stylesheet' />
+<link href='https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid/main.css' rel='stylesheet' />
+
+<style>
+#calendar {
+  height: auto !important;
+  min-height: 700px;
+  max-height: calc(100vh - 200px);
+  padding: 20px;
+}
+
+.fc {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.fc-header-toolbar {
+  padding: 15px !important;
+  margin-bottom: 0 !important;
+}
+
+.fc-button-primary {
+  background-color: #4361ee !important;
+  border-color: #4361ee !important;
+}
+
+.fc-button-primary:hover {
+  background-color: #2c49cf !important;
+  border-color: #2c49cf !important;
+}
+
+.fc-daygrid-day {
+  min-height: 100px !important;
+}
+
+.fc-day-today {
+  background: #e8f5e9 !important;
+}
+
+.fc-event {
+  margin: 2px 0;
+  padding: 2px 4px;
+  border: none !important;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.fc-event:hover {
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+.fc-toolbar-title {
+  font-size: 1.2em !important;
+}
+
+@media (max-width: 768px) {
+  .fc-header-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+</style>
+
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+
+<script>
+function initCalendar() {
+  var calendarEl = document.getElementById('calendar');
+  var calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    editable: true,
+    displayEventTime: true,
+    events: function(info, successCallback, failureCallback) {
+      fetch('{% url "get-interviews-json" %}')
+        .then(response => response.json())
+        .then(data => {
+          console.log('Calendar data:', data);
+          successCallback(data.events || []);
+        })
+        .catch(error => {
+          console.error('Error loading calendar data:', error);
+          document.getElementById('calendarError').style.display = 'block';
+          document.getElementById('calendarError').textContent = 
+            'Erreur lors du chargement des entretiens';
+          failureCallback(error);
+        });
+    },
+    eventClick: function(info) {
+      showInterviewDetails(info.event.id);
+    },
+    eventDidMount: function(info) {
+      $(info.el).tooltip({
+        title: info.event.title,
+        placement: 'top',
+        container: 'body'
+      });
+    }
+  });
+  
+  calendar.render();
+}
+
+document.addEventListener('DOMContentLoaded', initCalendar);
+</script>

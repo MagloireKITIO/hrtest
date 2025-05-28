@@ -1,0 +1,152 @@
+{# templates/base/audit/login_audit_log.html #}
+
+{% extends 'settings.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block settings %}
+<div class="oh-inner-sidebar-content"> 
+    <div class="oh-inner-sidebar-content__header d-flex justify-content-between align-items-center">
+        <h2 class="oh-inner-sidebar-content__title">{% trans "Login Audit Log" %}</h2>
+        <div class="d-flex gap-2"> {# Ajout de la classe d-flex et gap-2 pour l'espacement #}
+            {% comment %} Export Button {% endcomment %}
+            <form method="post" action="{% url 'login-audit-log-export' %}" class="mb-0">
+                {% csrf_token %}
+                <input type="hidden" name="filter_params" value="{{ pd }}">
+                <button type="submit" class="oh-btn oh-btn--secondary" >
+                    <ion-icon name="download-outline" class="me-1"></ion-icon>
+                    {% trans "Export" %}
+                </button>
+            </form>
+    
+            {% comment %} Reset Button {% endcomment %}
+            <a href="{% url 'login-audit-log' %}" class="oh-btn oh-btn--danger">
+                <ion-icon name="refresh-outline" class="me-1"></ion-icon>
+                {% trans "Reset" %}
+            </a>
+        </div>
+    </div>
+    {# Filter Section #}
+    <div class="oh-sticky-table__filters">
+        <form class="oh-form" method="get">
+            <div class="row">
+                <div class="col-sm-12 col-md-3">
+                    <label class="oh-label">{% trans "From Date" %}</label>
+                    {{f.form.date_from}}
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <label class="oh-label">{% trans "To Date" %}</label>
+                    {{f.form.date_to}}
+                </div>
+                <div class="col-sm-12 col-md-3">
+                    <label class="oh-label">{% trans "Status" %}</label>
+                    {{f.form.success}}
+                </div>
+                <div class="col-sm-12 col-md-3 d-flex align-items-end">
+                    <button type="submit" class="oh-btn oh-btn--secondary w-100">
+                        {% trans "Search" %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="oh-sticky-table oh-sticky-table--left">
+        <div class="oh-sticky-table__table">
+            <div class="oh-sticky-table__thead">
+                <div class="oh-sticky-table__tr">
+                    <div class="oh-sticky-table__th">{% trans "Username" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "IP Address" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Profile/Role" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Last Password Change" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Status" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Timestamp" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "User Agent" %}</div>
+                    <div class="oh-sticky-table__th">{% trans "Failure Reason" %}</div>
+                </div>
+            </div>
+            <div class="oh-sticky-table__tbody">
+                {% for log in logs %}
+                <div class="oh-sticky-table__tr">
+                    <div class="oh-sticky-table__td">
+                        {% if log.employee_id %}
+                            <a href="{% url 'employee-view-individual' log.employee_id.id %}">
+                                {{ log.username }}
+                            </a>
+                        {% else %}
+                            {{ log.username }}
+                        {% endif %}
+                    </div>
+                    <div class="oh-sticky-table__td">{{ log.ip_address }}</div>
+                    <div class="oh-sticky-table__td">{{ log.get_user_roles }}</div>
+                    <div class="oh-sticky-table__td">
+                        {% if log.get_last_password_change %}
+        {{ log.get_last_password_change|date:"d/m/Y H:i" }}
+    {% else %}
+        -
+    {% endif %}
+                    </div>
+                    <div class="oh-sticky-table__td">
+                        {% if log.success %}
+                            <span class="oh-badge oh-badge--success">{% trans "Success" %}</span>
+                        {% else %}
+                            <span class="oh-badge oh-badge--danger">{% trans "Failed" %}</span>
+                        {% endif %}
+                    </div>
+                    <div class="oh-sticky-table__td">{{ log.timestamp|date:"d/m/Y H:i" }}</div>
+                    <div class="oh-sticky-table__td">{{ log.user_agent }}</div>
+                    <div class="oh-sticky-table__td">{{ log.failure_reason|default:"-" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% if logs.has_other_pages %}
+<div class="oh-pagination">
+    <div class="oh-pagination__page">
+        {% if logs.has_previous %}
+            <a class="oh-btn oh-btn--small" href="?page={{ logs.previous_page_number }}&{{ pd }}">
+                <ion-icon class="me-1" name="chevron-back-outline"></ion-icon>
+                {% trans "Previous" %}
+            </a>
+        {% endif %}
+
+        <span class="mx-3">
+            {% trans "Page" %} {{ logs.number }} {% trans "of" %} {{ logs.paginator.num_pages }}
+        </span>
+
+        {% if logs.has_next %}
+            <a class="oh-btn oh-btn--small" href="?page={{ logs.next_page_number }}&{{ pd }}">
+                {% trans "Next" %}
+                <ion-icon class="ms-1" name="chevron-forward-outline"></ion-icon>
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+<script>
+    function resetFilter() {
+        window.location.href = "{% url 'login-audit-log' %}";
+    }
+    
+    async function exportData() {
+        const params = new URLSearchParams(window.location.search);
+        params.set('export', 'true');
+        
+        try {
+            const response = await fetch(`?${params.toString()}`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'login_audit_log.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Export failed:', error);
+        }
+    }
+    </script>

@@ -1,0 +1,335 @@
+{% load static %}
+{% load recruitmentfilters i18n %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Application Status - {{candidate.get_full_name}}</title>
+    <link rel="stylesheet" href="{% static 'build/css/style.min.css' %}" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --success-color: #059669;
+            --warning-color: #eab308;
+            --danger-color: #dc2626;
+            --bg-color: #f0f9ff;
+        }
+
+        body {
+            background: var(--bg-color);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+
+        .status-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .status-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .status-header h1 {
+            color: #1f2937;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-header p {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            transition: all 0.3s ease;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .candidate-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .candidate-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #e5e7eb;
+            position: relative;
+        }
+
+        .candidate-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .candidate-details {
+            flex: 1;
+        }
+
+        .candidate-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .position-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .application-info {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .status-badge.success {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-badge.warning {
+            background: rgba(234, 179, 8, 0.1);
+            color: var(--warning-color);
+        }
+
+        .status-badge.danger {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--danger-color);
+        }
+
+        .status-badge ion-icon {
+            font-size: 1.25rem;
+        }
+
+        .progress-section {
+            margin-top: 2rem;
+        }
+
+        .progress-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+
+        .progress-steps {
+            position: relative;
+            counter-reset: step;
+        }
+
+        .progress-step {
+            position: relative;
+            padding-left: 3rem;
+            padding-bottom: 2rem;
+        }
+
+        .progress-step::before {
+            content: counter(step);
+            counter-increment: step;
+            width: 2rem;
+            height: 2rem;
+            background: #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .progress-step::after {
+            content: '';
+            position: absolute;
+            left: 0.9rem;
+            top: 2.5rem;
+            width: 2px;
+            height: calc(100% - 2.5rem);
+            background: #e5e7eb;
+        }
+
+        .progress-step:last-child::after {
+            display: none;
+        }
+
+        .progress-step.active::before {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .progress-step.completed::before {
+            background: var(--success-color);
+            color: white;
+            content: '✓';
+        }
+
+        .rating-section {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .oh-rate {
+            display: inline-flex;
+            flex-direction: row-reverse;
+            gap: 0.25rem;
+        }
+
+        .rating-radio {
+            display: none;
+        }
+
+        .oh-rate label {
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #9ca3af;
+            transition: all 0.3s ease;
+        }
+
+        .rating-radio:checked + label {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .candidate-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .candidate-avatar {
+                margin: 0 auto;
+            }
+
+            .progress-step {
+                padding-left: 2.5rem;
+            }
+        }
+    </style>
+  </head>
+  <body>
+    <div class="status-container">
+        <div class="status-header">
+            <h1>Application Status</h1>
+            <p>Track your application progress</p>
+        </div>
+
+        <div class="status-card">
+            <div class="candidate-info">
+                <div class="candidate-avatar">
+                    <img src="{{ candidate.get_avatar }}" alt="{{ candidate.get_full_name }}" />
+                </div>
+                <div class="candidate-details">
+                    <h2 class="candidate-name">{{candidate.get_full_name}}</h2>
+                    <div class="position-badge">
+                        <ion-icon name="briefcase-outline" class="me-2"></ion-icon>
+                        {{ candidate.get_job_position }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="application-info">
+                <h3>{{ candidate.recruitment_id.title }}</h3>
+                <p class="current-stage">Current Stage: {{ candidate.stage_id.stage }}</p>
+                
+                {% if candidate.hired %}
+                <div class="status-badge success">
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    <span>Congratulations on your selection!</span>
+                </div>
+                {% elif candidate.canceled %}
+                <div class="status-badge danger">
+                    <ion-icon name="close-circle-outline"></ion-icon>
+                    <span>Application not selected</span>
+                </div>
+                {% else %}
+                <div class="status-badge warning">
+                    <ion-icon name="time-outline"></ion-icon>
+                    <span>Application under review</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if check_candidate_self_tracking_rating %}
+            <div class="rating-section">
+                <h4>Your Rating</h4>
+                <form>
+                    <div class="oh-rate" onmouseenter="event.stopPropagation()">
+                        {% for i in "54321" %}
+                        <input type="radio" 
+                               id="star{{i}}{{candidate.id}}" 
+                               name="rating" 
+                               class="rating-radio" 
+                               value="{{i}}" 
+                               disabled 
+                               {% if candidate.candidate_rating.all|avg_rating:candidate == i %} checked {% endif %} />
+                        <label for="star{{i}}{{candidate.id}}">{{i}}</label>
+                        {% endfor %}
+                    </div>
+                    <span id="rating-radio-error"></span>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+  </body>
+</html>

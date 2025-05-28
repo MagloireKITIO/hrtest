@@ -1,0 +1,399 @@
+<!-- recruitment/templates/recruitment/recruitment_form.html - Template complet pour la création -->
+
+{% load i18n %} {% load static %}
+<script>
+    function skillChange(selectElement) {
+        var selectedSkill = selectElement.val();
+        var parentForm = selectElement.parents().closest("form");
+        if (selectedSkill && selectedSkill.includes("create")) {
+            let dynamicskills = $("#dynamicSkills");
+            var view = parentForm.serialize();
+            dynamicskills.attr("hx-vals", `{"data":"${view}"}`);
+            dynamicskills.click();
+        }
+    }
+    $(document).ready(function(){
+        $("[name= 'skills']").on("change", function(){
+            skillChange($(this))
+        })
+    });
+    {% if dynamic %}
+    setTimeout(function () {
+      $('#dynamicCreateModal').removeClass('oh-modal--show');
+    }, 500);
+  {% endif %}
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('[name = "selectors"]').select2({
+            templateResult: formatOption,
+            templateSelection: formatOption,
+            placeholder: "{% trans 'Select Selectors' %}",
+            allowClear: true
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        function formatOption(option) {
+            if (!option.id) {
+                return option.text;
+            }
+            var $option = $('<span></span>').text(option.text);
+            return $option;
+        }
+        $('[name = "skills"]').select2({
+            templateResult: formatOption,
+            templateSelection: formatOption
+        });
+    });
+</script>
+
+<style>
+    .help-text {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 4px;
+        z-index: 1000;
+    }
+    .oh-label:hover .help-text {
+        display: block;
+    }
+    
+    .internal-recruitment {
+        position: relative;
+    }
+    
+    .internal-recruitment::after {
+        content: '🔒';  /* Icône de cadenas pour le recrutement interne */
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+    }
+    
+    .external-recruitment {
+        position: relative;
+    }
+    
+    .external-recruitment::after {
+        content: '🌐';  /* Icône de globe pour le recrutement externe */
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+    }
+    
+    .auto-calculated {
+        background-color: #f8f9fa !important;
+        border-left: 3px solid #28a745 !important;
+    }
+    
+    .auto-calculated:focus {
+        background-color: #f8f9fa !important;
+    }
+    
+    #validity-info {
+        font-size: 0.875rem;
+    }
+</style>
+
+{% if messages %}
+<div class="oh-wrapper">
+  {% for message in messages %}
+  <div class="oh-alert-container">
+    <div class="oh-alert oh-alert--animated {{message.tags}}">
+      {{ message }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="oh-modal__dialog-header">
+    <h5 class="oh-modal__dialog-title" id="addRecruitmentModalLabel">
+      {% if duplicate %}{% trans "Duplicate Recruitment" %}{% else %}{% trans "Add Recruitment" %}{% endif %}
+    </h5>
+    <button class="oh-modal__close" aria-label="Close">
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+</div>
+
+<div class="oh-modal__dialog-body" id="addRecruitmentModalBody">
+    <form action="{% url 'recruitment-create' %}" method="post" class="oh-general__tab-target oh-profile-section">
+        <div>
+            {% csrf_token %}
+            <div class="row" id="recruitmentUpdateContainer">
+                <div class="col-12 col-sm-12 col-md-12 col-lg-12">
+                    {% for error in form.non_field_errors %}
+                    <ul class="errorlist">
+                        <li>{{error}}</li>
+                    </ul>
+                    {% endfor %}
+                    <label class="oh-label required-star" for="{{form.title.id_for_label}}">{% trans "Title" %}</label>
+                    {{form.title}} {{form.title.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-12">
+                    <label class="oh-label required-star" for="{{form.description.id_for_label}}">{% trans "Description" %}</label>
+                    {{form.description}} {{form.description.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6" id="openPositionUpdateContainer">
+                    <label class="oh-label required-star" for="{{form.open_positions.id_for_label}}">{% trans "Job Position" %}</label>
+                    {{form.open_positions}} {{form.open_positions.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="{{ form.recruitment_managers.id_for_label }}">
+                        {% trans "Recruitment manager" %}
+                    </label>
+                    {{ form.recruitment_managers }}
+                    {{ form.recruitment_managers.errors }}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="selectors">
+                        {% trans "Demandeur" %}
+                    </label>
+                    <select name="selectors" id="selectors" multiple class="oh-select oh-select-2 select2-hidden-accessible" data-placeholder="{% trans 'Select Selectors' %}">
+                        {% for employee in form.selectors.field.queryset %}
+                            {% if employee.is_selector %}
+                                <option value="{{ employee.id }}" 
+                                    {% if employee.id in form.selectors.value %}selected{% endif %}>
+                                    {{ employee.get_full_name }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    {{ form.selectors.errors }}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label required-star" for="{{form.recruitment_type.id_for_label}}">
+                        {% trans "Recruitment Type" %}
+                    </label>
+                    {{form.recruitment_type}}
+                    {% if form.recruitment_type.errors %}
+                        <div class="invalid-feedback d-block">{{form.recruitment_type.errors}}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Champ Durée de validité -->
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="{{form.validity_duration.id_for_label}}" title="{{form.validity_duration.help_text|safe}}">
+                        {% trans "Durée de validité" %}
+                    </label>
+                    {{form.validity_duration}}
+                    {% if form.validity_duration.errors %}
+                        <div class="invalid-feedback d-block">{{form.validity_duration.errors}}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Champs de dates -->
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="{{form.start_date.id_for_label}}">{% trans "Start Date" %}</label>
+                    {{form.start_date}} {{form.start_date.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="{{form.end_date.id_for_label}}">{% trans "End Date" %}</label>
+                    {{form.end_date}} {{form.end_date.errors}}
+                </div>
+                
+                <!-- Message d'aide contextuel -->
+                <div class="col-12">
+                    <div class="oh-alert oh-alert--info mt-2" id="validity-info" style="display: none;">
+                        <small>
+                            <ion-icon name="information-circle-outline"></ion-icon>
+                            <span id="validity-message"></span>
+                        </small>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label" for="{{form.vacancy.id_for_label}}">{% trans "Vacancy" %}</label>
+                    {{form.vacancy}} {{form.vacancy.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                    <label class="oh-label" for="{{form.company_id.id_for_label}}">{% trans "Company" %}</label>
+                    {{form.company_id}} {{form.company_id.errors}}
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_is_published" title="{{form.is_published.help_text|safe}}">{% trans "Is Published?" %}</label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.is_published}}</div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_optional_profile_image" title="{{form.optional_profile_image.help_text|safe}}">{% trans "Optional Profile Image?" %}</label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.optional_profile_image}}</div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+                    <label class="oh-label" for="id_optional_motivation" title="{{form.optional_motivation.help_text|safe}}">{% trans "Optional Motivation Letter?" %}</label>
+                    <div class="w-100 d-flex" style="align-items: center">
+                        <div class="oh-switch">{{form.optional_motivation}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex flex-row-reverse w-100 align-items-right mt-4">
+            <button type="submit" class="oh-btn oh-btn--secondary pl-5 pr-5" hx-post="{% url 'recruitment-create' %}" hx-target="#objectCreateModalTarget">
+                {% trans "Add" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+$(".oh-general__tab-target.oh-profile-section [name=description]").hide();
+</script>
+
+<script>
+$(document).ready(function() {
+    const recruitmentTypeSelect = $('[name="recruitment_type"]');
+    const vacancyInput = $('[name="vacancy"]');
+    
+    recruitmentTypeSelect.on('change', function() {
+        const recruitmentType = $(this).val();
+        const parentContainer = $(this).closest('.col-lg-6');
+        
+        parentContainer.removeClass('internal-recruitment external-recruitment');
+        
+        if (recruitmentType === 'INTERNAL') {
+            parentContainer.addClass('internal-recruitment');
+            if (vacancyInput.val() === '') {
+                vacancyInput.val('1');
+            }
+        } else if (recruitmentType === 'EXTERNAL') {
+            parentContainer.addClass('external-recruitment');
+        }
+    });
+    
+    recruitmentTypeSelect.trigger('change');
+});
+
+// Script principal pour la gestion des dates dans le formulaire de CRÉATION
+$(document).ready(function() {
+    // DÉBOGAGE : Afficher tous les IDs des champs
+    console.log('=== DÉBOGAGE IDS ===');
+    console.log('Validity duration field:', $('[name="validity_duration"]').attr('id'));
+    console.log('Start date field:', $('[name="start_date"]').attr('id')); 
+    console.log('End date field:', $('[name="end_date"]').attr('id'));
+    
+    // Utiliser les sélecteurs par name au lieu des IDs
+    const validityDurationSelect = $('[name="validity_duration"]');
+    const startDateInput = $('[name="start_date"]');
+    const endDateInput = $('[name="end_date"]');
+    const validityInfo = $('#validity-info');
+    const validityMessage = $('#validity-message');
+    
+    console.log('Éléments trouvés:');
+    console.log('validityDurationSelect:', validityDurationSelect.length);
+    console.log('startDateInput:', startDateInput.length);
+    console.log('endDateInput:', endDateInput.length);
+    
+    // Fonction pour initialiser la date de début à aujourd'hui
+    function initializeStartDate() {
+        if (!startDateInput.val()) {
+            const today = new Date();
+            const formattedToday = today.toISOString().split('T')[0];
+            startDateInput.val(formattedToday);
+            console.log('Date de début initialisée à:', formattedToday);
+        }
+    }
+    
+    // Fonction pour calculer et mettre à jour la date de fin
+    function updateEndDate() {
+        const duration = parseInt(validityDurationSelect.val());
+        const startDate = startDateInput.val();
+        
+        console.log('updateEndDate - Duration:', duration, 'Start date:', startDate);
+        
+        if (duration > 0 && startDate) {
+            const start = new Date(startDate);
+            const end = new Date(start);
+            end.setDate(start.getDate() + duration);
+            
+            const formattedDate = end.toISOString().split('T')[0];
+            endDateInput.val(formattedDate);
+            
+            endDateInput.prop('readonly', true);
+            endDateInput.addClass('auto-calculated');
+            
+            console.log('Date de fin calculée:', formattedDate);
+        } else if (duration === 0) {
+            endDateInput.prop('readonly', false);
+            endDateInput.removeClass('auto-calculated');
+            console.log('Mode personnalisé activé');
+        }
+    }
+    
+    // Fonction pour afficher des messages d'aide contextuel
+    function showValidityInfo() {
+        const duration = parseInt(validityDurationSelect.val());
+        const selectedText = validityDurationSelect.find('option:selected').text();
+        
+        if (duration > 0) {
+            validityMessage.text(`La date de fin sera automatiquement calculée basée sur ${selectedText}.`);
+            validityInfo.show();
+        } else if (duration === 0) {
+            validityMessage.text('Mode personnalisé : vous pouvez saisir manuellement les dates de début et de fin.');
+            validityInfo.show();
+        } else {
+            validityInfo.hide();
+        }
+    }
+    
+    // Gérer les changements de durée de validité
+    validityDurationSelect.on('change', function() {
+        console.log('Changement de durée détecté:', $(this).val());
+        initializeStartDate();
+        updateEndDate();
+        showValidityInfo();
+    });
+    
+    // Gérer les changements de date de début
+    startDateInput.on('change', function() {
+        console.log('Changement de date de début détecté:', $(this).val());
+        const duration = parseInt(validityDurationSelect.val());
+        if (duration > 0) {
+            updateEndDate();
+        }
+    });
+    
+    // Permettre la modification manuelle quand "Personnalisé" est sélectionné
+    endDateInput.on('focus', function() {
+        const duration = parseInt(validityDurationSelect.val());
+        if (duration === 0) {
+            $(this).prop('readonly', false);
+            $(this).removeClass('auto-calculated');
+        }
+    });
+    
+    // Test immédiat
+    console.log('=== TEST INITIAL ===');
+    console.log('Valeur durée actuelle:', validityDurationSelect.val());
+    console.log('Valeur date début:', startDateInput.val());
+    console.log('Valeur date fin:', endDateInput.val());
+    
+    // Initialisation au chargement de la page
+    initializeStartDate();
+    updateEndDate();
+    showValidityInfo();
+});
+</script>

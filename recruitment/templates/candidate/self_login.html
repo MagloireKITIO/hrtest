@@ -1,0 +1,389 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Application Tracking</title>
+    <link rel="stylesheet" href="{% static 'build/css/style.min.css' %}" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --success-color: #059669;
+            --background-color: #f0f9ff;
+        }
+
+        body {
+            background-color: var(--background-color);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .tracking-container {
+            width: 100%;
+            max-width: 500px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .tracking-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .tracking-header__icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .tracking-header__title {
+            font-size: 2rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .tracking-header__subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .tracking-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .tracking-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #4b5563;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .input-group:focus-within label {
+            color: var(--primary-color);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: color 0.3s ease;
+        }
+
+        .oh-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .oh-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+
+        .oh-input:focus + .input-icon {
+            color: var(--primary-color);
+        }
+
+        /* Styles spécifiques pour le champ téléphone */
+        .phone-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .phone-prefix {
+            position: absolute;
+            left: 2.5rem;
+            color: #4b5563;
+            font-weight: 500;
+            z-index: 2;
+        }
+
+        .phone-input {
+            padding-left: 3.5rem !important;
+        }
+
+        .phone-input-wrapper .input-icon {
+            left: 1rem;
+        }
+
+        .phone-input:focus ~ .phone-prefix {
+            color: var(--primary-color);
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .submit-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .submit-button ion-icon {
+            font-size: 1.25rem;
+        }
+
+        .security-note {
+            text-align: center;
+            margin-top: 1rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Background Animation */
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--primary-color);
+            animation: pulse 4s infinite;
+        }
+
+        .circle:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .circle:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            bottom: -75px;
+            left: -75px;
+            animation-delay: 2s;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .tracking-header__title {
+                font-size: 1.5rem;
+            }
+
+            .tracking-header__subtitle {
+                font-size: 1rem;
+            }
+
+            .tracking-card {
+                padding: 1.5rem;
+            }
+        }
+        .swal2-popup {
+    border-radius: 16px !important;
+    padding: 2rem !important;
+}
+
+.swal2-title {
+    color: #1f2937 !important;
+    font-size: 1.5rem !important;
+}
+
+.swal2-html-container {
+    color: #6b7280 !important;
+}
+
+.swal2-confirm {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 1rem !important;
+}
+
+.swal2-icon {
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+}
+    </style>
+</head>
+<body>
+    <div class="background-animation">
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="tracking-container">
+        <div class="tracking-header">
+            <div class="tracking-header__icon">
+                <ion-icon name="clipboard-outline"></ion-icon>
+            </div>
+            <h1 class="tracking-header__title">Track Your Application</h1>
+            <p class="tracking-header__subtitle">Enter your credentials to check the status of your application</p>
+        </div>
+
+        <form action="{% url 'candidate-self-status-tracking' %}" method="post" class="tracking-card">
+            {% csrf_token %}
+            
+            <div class="input-group">
+                <label for="email">Email Address</label>
+                <input type="email" 
+                       name="email" 
+                       id="email"
+                       class="oh-input" 
+                       placeholder="Enter your email address"
+                       required />
+                <ion-icon name="mail-outline" class="input-icon"></ion-icon>
+            </div>
+
+            <div class="input-group">
+              <label for="phone">Phone Number</label>
+              <div class="phone-input-wrapper">
+                  <input type="tel" 
+                         name="phone" 
+                         id="phone"
+                         class="oh-input" 
+                         placeholder="+23769xxxxxxx"
+                         required />
+                  <ion-icon name="call-outline" class="input-icon"></ion-icon>
+              </div>
+              <span class="error-message" id="phoneError"></span>
+          </div>
+
+            <button type="submit" class="submit-button">
+                <ion-icon name="search-outline"></ion-icon>
+                Track Application
+            </button>
+
+            <div class="security-note">
+                <ion-icon name="shield-checkmark-outline"></ion-icon>
+                Your information is secure and encrypted
+            </div>
+        </form>
+    </div>
+
+    <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.x.x/dist/ionicons/ionicons.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          const form = document.querySelector('form');
+  
+          // Ne pas empêcher la soumission par défaut
+          form.addEventListener('submit', function() {
+              const submitButton = this.querySelector('.submit-button');
+              submitButton.innerHTML = `
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Checking...
+              `;
+              submitButton.disabled = true;
+              // Laisser le formulaire se soumettre naturellement
+              return true;
+          });
+  
+          // Vérifier les messages Django au chargement
+          {% if messages %}
+              {% for message in messages %}
+                  Swal.fire({
+                      title: '{% if message.tags == "error" %}Error{% elif message.tags == "success" %}Success{% else %}Notice{% endif %}',
+                      text: '{{ message }}',
+                      icon: '{% if message.tags == "error" %}error{% elif message.tags == "success" %}success{% else %}info{% endif %}',
+                      confirmButtonColor: '#2563eb'
+                  });
+              {% endfor %}
+          {% endif %}
+      });
+  </script>
+</body>
+</html>

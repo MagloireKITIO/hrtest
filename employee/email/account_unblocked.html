@@ -1,0 +1,16 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html>
+<body>
+    <p>{% trans "Dear" %} {{ employee.get_full_name }},</p>
+    
+    <p>{% trans "Your account has been unblocked by an administrator." %}</p>
+    
+    <p>{% trans "Please login at" %} http://{{ domain }}/login {% trans "with your email address." %}</p>
+    
+    <p>{% trans "You will be required to set a new password when you login." %}</p>
+    
+    <p>{% trans "Best regards," %}<br>
+    {% trans "The System Team" %}</p>
+</body>
+</html>

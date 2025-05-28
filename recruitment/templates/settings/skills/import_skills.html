@@ -1,0 +1,17 @@
+{% load i18n %}
+
+<div class="oh-modal__dialog-header pb-0">
+    {% trans "Importer des Skills" %}
+</div>
+
+<div class="oh-modal__dialog-body">
+    <form method="post" enctype="multipart/form-data" action="{% url 'import-skills' %}" hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="d-flex justify-content-end mt-3">
+            <button type="submit" class="oh-btn oh-btn--secondary">
+                {% trans "Importer" %}
+            </button>
+        </div>
+    </form>
+</div>
