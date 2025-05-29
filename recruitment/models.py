@@ -747,6 +747,11 @@ class Candidate(HorillaModel):
         blank=True,
         verbose_name=_("Last Analysis")
     )
+    privacy_policy_accepted = models.BooleanField(
+        default=False,
+        verbose_name=_("Privacy Policy Accepted"),
+        help_text=_("Indicates if the candidate accepted the privacy policy")
+    )
 
     def update_ai_analysis(self, score, details):
         """Update AI analysis results and status"""
@@ -1581,3 +1586,141 @@ class AIConfiguration(HorillaModel):
         except Exception as e:
             logger.error(f"Test API key failed: {str(e)}")
             return False
+
+class PrivacyPolicy(HorillaModel):
+    """
+    Modèle pour gérer les politiques de confidentialité par filiale
+    """
+    name = models.CharField(
+        max_length=100,
+        verbose_name=_("Policy Name"),
+        help_text=_("Nom de la politique de confidentialité")
+    )
+    
+    content_type = models.CharField(
+        max_length=10,
+        choices=[
+            ('text', _('Text')),
+            ('pdf', _('PDF'))
+        ],
+        default='text',
+        verbose_name=_("Content Type")
+    )
+    
+    text_content = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_("Text Content"),
+        help_text=_("Contenu textuel de la politique")
+    )
+    
+    pdf_file = models.FileField(
+        upload_to='recruitment/privacy_policies/',
+        blank=True,
+        null=True,
+        validators=[validate_pdf],
+        verbose_name=_("PDF File"),
+        help_text=_("Fichier PDF de la politique")
+    )
+    
+    companies = models.ManyToManyField(
+        'base.Company',
+        blank=True,
+        verbose_name=_("Companies"),
+        help_text=_("Filiales utilisant cette politique")
+    )
+    
+    is_default = models.BooleanField(
+        default=False,
+        verbose_name=_("Default Policy"),
+        help_text=_("Politique par défaut si aucune n'est assignée à la filiale")
+    )
+    
+    objects = HorillaCompanyManager()
+
+    class Meta:
+        verbose_name = _("Privacy Policy")
+        verbose_name_plural = _("Privacy Policies")
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        """Validation du modèle"""
+        super().clean()
+        
+        if self.content_type == 'text' and not self.text_content:
+            raise ValidationError({
+                'text_content': _("Le contenu textuel est requis pour une politique de type texte")
+            })
+        
+        if self.content_type == 'pdf' and not self.pdf_file:
+            raise ValidationError({
+                'pdf_file': _("Un fichier PDF est requis pour une politique de type PDF")
+            })
+
+    def save(self, *args, **kwargs):
+        # Si cette politique est définie comme par défaut, retirer le flag des autres
+        if self.is_default:
+            PrivacyPolicy.objects.exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_policy_for_company(cls, company):
+        """
+        Récupère la politique de confidentialité pour une filiale donnée
+        """
+        if company:
+            policy = cls.objects.filter(
+                companies=company, 
+                is_active=True
+            ).first()
+            if policy:
+                return policy
+        
+        # Fallback sur la politique par défaut
+        return cls.objects.filter(is_default=True, is_active=True).first()
+
+    @classmethod
+    def get_default_policy(cls):
+        """
+        Récupère la politique par défaut
+        """
+        return cls.objects.filter(is_default=True, is_active=True).first()
+
+
+class CandidatePrivacyConsent(HorillaModel):
+    """
+    Modèle pour stocker le consentement des candidats à la politique de confidentialité
+    """
+    candidate = models.OneToOneField(
+        Candidate,
+        on_delete=models.CASCADE,
+        related_name='privacy_consent',
+        verbose_name=_("Candidate")
+    )
+    
+    policy = models.ForeignKey(
+        PrivacyPolicy,
+        on_delete=models.PROTECT,
+        verbose_name=_("Privacy Policy"),
+        help_text=_("Politique acceptée par le candidat")
+    )
+    
+    consented_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Consent Date")
+    )
+    
+    ip_address = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        verbose_name=_("IP Address")
+    )
+
+    class Meta:
+        verbose_name = _("Privacy Consent")
+        verbose_name_plural = _("Privacy Consents")
+
+    def __str__(self):
+        return f"{self.candidate.name} - {self.policy.name} - {self.consented_at}"

@@ -36,7 +36,7 @@ from django.utils.translation import gettext_lazy as _
 
 from base.forms import Form
 from base.methods import reload_queryset
-from base.models import Company
+from base.models import Company, Department
 from employee.filters import EmployeeFilter
 from employee.models import Employee
 from horilla import horilla_middlewares
@@ -47,8 +47,10 @@ from recruitment import widgets
 from recruitment.models import (
     AIConfiguration,
     Candidate,
+    CandidatePrivacyConsent,
     InterviewSchedule,
     JobPosition,
+    PrivacyPolicy,
     Recruitment,
     RecruitmentSurvey,
     RejectedCandidate,
@@ -350,9 +352,44 @@ class RecruitmentCreationForm(ModelForm):
         return table_html
 
     def __init__(self, *args, **kwargs):
+        # Récupérer l'utilisateur depuis le contexte
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
         reload_queryset(self.fields)
+        
+        # Filtrage basé sur la compagnie de l'utilisateur
+        if self.user and hasattr(self.user, 'employee_get'):
+            employee = self.user.employee_get
+            user_company = employee.company_id if employee else None
+            
+            # Si l'utilisateur n'est pas superuser, filtrer par sa compagnie
+            if not self.user.is_superuser and user_company:
+                # Filtrer les compagnies disponibles
+                self.fields['company_id'].queryset = Company.objects.filter(id=user_company.id)
+                self.fields['company_id'].initial = user_company
+                
+                # Filtrer les managers par compagnie
+                self.fields['recruitment_managers'].queryset = Employee.objects.filter(
+                    is_active=True,
+                    company_id=user_company
+                )
+                
+                # Filtrer les sélecteurs par compagnie
+                self.fields['selectors'].queryset = Employee.objects.filter(
+                    is_active=True,
+                    is_selector=True,
+                    company_id=user_company
+                )
+                
+                # SOLUTION: Filtrer les positions via les départements de la compagnie
+                departments_in_company = Department.objects.filter(company_id=user_company)
+                positions_in_company = JobPosition.objects.filter(
+                    department_id__in=departments_in_company,
+                    is_active=True
+                )
+                
+                self.fields['open_positions'].queryset = positions_in_company
         
         # Gestion différente selon création ou modification
         if self.instance and self.instance.pk:
@@ -370,17 +407,16 @@ class RecruitmentCreationForm(ModelForm):
                     self.fields['validity_duration'].initial = duration_days
                 else:
                     self.fields['validity_duration'].initial = 0  # Personnalisé
-                    
-            # NE PAS écraser les dates existantes pour la modification
-            
         else:
             # CRÉATION: Initialiser avec les valeurs par défaut
             self.fields['start_date'].initial = date.today()
             # La date de fin sera calculée côté client par JavaScript
         
+        # Configuration du champ recruitment_managers pour la création
         if not self.instance.pk:
+            manager_queryset = self.fields['recruitment_managers'].queryset
             self.fields["recruitment_managers"] = HorillaMultiSelectField(
-                queryset=Employee.objects.filter(is_active=True),
+                queryset=manager_queryset,
                 widget=HorillaMultiSelectWidget(
                     filter_route_name="employee-widget-filter",
                     filter_class=EmployeeFilter,
@@ -391,6 +427,7 @@ class RecruitmentCreationForm(ModelForm):
                 label="Employee",
             )
         
+        # Configuration des skills
         skill_choices = [("", _("---Choose Skills---"))] + list(
             self.fields["skills"].queryset.values_list("id", "title")
         )
@@ -410,7 +447,7 @@ class RecruitmentCreationForm(ModelForm):
 
     def clean_selectors(self):
         """
-        Validation des sélecteurs assignés
+        Validation des sélecteurs assignés avec vérification de compagnie
         """
         selectors = self.cleaned_data.get('selectors')
         company_id = self.cleaned_data.get('company_id')
@@ -419,10 +456,10 @@ class RecruitmentCreationForm(ModelForm):
             invalid_selectors = []
             
             for selector in selectors:
-                # Vérifier que le sélecteur peut être assigné à cette compagnie
+                # Vérifier que le sélecteur appartient à la même compagnie
                 if (selector.company_id and 
                     selector.company_id != company_id and 
-                    not selector.employee_user_id.is_superuser):
+                    not self.user.is_superuser):
                     
                     invalid_selectors.append(
                         f"{selector.get_full_name()} (compagnie: {selector.company_id})"
@@ -444,6 +481,16 @@ class RecruitmentCreationForm(ModelForm):
             ids = self.data.getlist("recruitment_managers")
             if ids:
                 self.errors.pop("recruitment_managers", None)
+
+        # Validation supplémentaire pour la compagnie
+        if self.user and not self.user.is_superuser:
+            company_id = cleaned_data.get('company_id')
+            if company_id and hasattr(self.user, 'employee_get'):
+                user_company = self.user.employee_get.company_id
+                if user_company and company_id != user_company:
+                    raise forms.ValidationError(
+                        _("Vous ne pouvez créer des recrutements que pour votre compagnie.")
+                    )
         
         # Validate open positions
         open_positions = cleaned_data.get("open_positions")
@@ -499,7 +546,10 @@ class StageCreationForm(ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Récupérer l'utilisateur depuis le contexte
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
         reload_queryset(self.fields)
         data = kwargs.get('data', {})
         initial = kwargs.get('initial', {})
@@ -507,8 +557,16 @@ class StageCreationForm(ModelForm):
         # Obtenir le type d'étape actuel
         stage_type = data.get('stage_type') or initial.get('stage_type') or self.instance.stage_type if self.instance.pk else None
         
-        # Définir le queryset en fonction du type
+        # Définir le queryset en fonction du type et de la compagnie
         manager_queryset = Employee.objects.filter(is_active=True)
+        
+        # Filtrer par compagnie si l'utilisateur n'est pas superuser
+        if self.user and hasattr(self.user, 'employee_get') and not self.user.is_superuser:
+            user_company = self.user.employee_get.company_id
+            if user_company:
+                manager_queryset = manager_queryset.filter(company_id=user_company)
+        
+        # Filtrer par type de stage
         if stage_type == 'selector':
             manager_queryset = manager_queryset.filter(is_selector=True)
             
@@ -740,7 +798,16 @@ class ApplicationForm(RegistrationForm):
        is_active=True, closed=False, is_published=True
    )
    recruitment_id = forms.ModelChoiceField(queryset=active_recruitment)
-
+   privacy_consent = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={
+            'id': 'privacy_consent',
+            'class': 'oh-switch__checkbox',
+            'onchange': 'toggleSubmitButton(this)'
+        }),
+        label=_("J'accepte la politique de confidentialité")
+    )
+   
    class Meta:
        """
        Meta class to add the additional info
@@ -762,6 +829,7 @@ class ApplicationForm(RegistrationForm):
            "ai_score",
            "ai_analysis_details",
            "ai_analysis_timestamp",
+           "privacy_policy_accepted",
        )
        widgets = {
            "recruitment_id": forms.TextInput(
@@ -842,24 +910,39 @@ class ApplicationForm(RegistrationForm):
        return cleaned_data
 
    def save(self, commit=True):
-       """
-       Override save to set default AI analysis status
-       """
-       instance = super().save(commit=False)
-       # Set default values for AI fields
-       instance.ai_analysis_status = 'pending'
-       instance.ai_score = None 
-       instance.ai_analysis_details = None
-       instance.ai_analysis_timestamp = None
+        """
+        Override save to set privacy policy acceptance
+        """
+        instance = super().save(commit=False)
+        
+        # Set privacy policy acceptance
+        instance.privacy_policy_accepted = self.cleaned_data.get('privacy_consent', False)
+        
+        # Set default values for AI fields
+        instance.ai_analysis_status = 'pending'
+        instance.ai_score = None 
+        instance.ai_analysis_details = None
+        instance.ai_analysis_timestamp = None
 
-       if commit:
-           try:
-               instance.save()
-           except IntegrityError as e:
-               logger.error(f"Error saving candidate: {str(e)}")
-               raise ValidationError(_("Vous avez déjà postulé pour cette offre d'emploi."))
+        if commit:
+            try:
+                instance.save()
+                
+                # Enregistrer le consentement si la politique existe
+                if instance.privacy_policy_accepted and instance.recruitment_id:
+                    policy = PrivacyPolicy.get_policy_for_company(instance.recruitment_id.company_id)
+                    if policy:
+                        CandidatePrivacyConsent.objects.create(
+                            candidate=instance,
+                            policy=policy,
+                            ip_address=self.request.META.get('REMOTE_ADDR') if hasattr(self, 'request') else None
+                        )
+                        
+            except IntegrityError as e:
+                logger.error(f"Error saving candidate: {str(e)}")
+                raise ValidationError(_("Vous avez déjà postulé pour cette offre d'emploi."))
 
-       return instance
+        return instance
 
 
 class RecruitmentDropDownForm(DropDownForm):
@@ -1708,3 +1791,68 @@ class AIConfigurationTestForm(forms.Form):
         label=_("Description du poste"),
         help_text=_("Description du poste pour le test d'analyse")
     )
+
+class PrivacyPolicyForm(ModelForm):
+    """
+    Form for Privacy Policy model
+    """
+    
+    companies = forms.ModelMultipleChoiceField(
+        queryset=Company.objects.filter(is_active=True),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'oh-switch__checkbox'
+        }),
+        label=_("Filiales"),
+        help_text=_("Sélectionnez les filiales qui utiliseront cette politique")
+    )
+
+    class Meta:
+        model = PrivacyPolicy
+        fields = [
+            'name', 'content_type', 'text_content', 'pdf_file', 
+            'companies', 'is_default'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'oh-input w-100',
+                'placeholder': _('Nom de la politique')
+            }),
+            'content_type': forms.RadioSelect(),
+            'text_content': forms.Textarea(attrs={
+                'class': 'oh-input w-100',
+                'rows': 15,
+                'data-summernote': '',
+                'placeholder': _('Contenu de la politique de confidentialité')
+            }),
+            'pdf_file': forms.FileInput(attrs={
+                'class': 'oh-input oh-input--file w-100',
+                'accept': '.pdf'
+            }),
+            'is_default': forms.CheckboxInput(attrs={
+                'class': 'oh-switch__checkbox'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Si on modifie une politique existante, précharger les filiales
+        if self.instance and self.instance.pk:
+            self.fields['companies'].initial = self.instance.companies.all()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        content_type = cleaned_data.get('content_type')
+        text_content = cleaned_data.get('text_content')
+        pdf_file = cleaned_data.get('pdf_file')
+        
+        # Validation selon le type de contenu
+        if content_type == 'text' and not text_content:
+            self.add_error('text_content', _('Le contenu textuel est requis'))
+        
+        if content_type == 'pdf':
+            if not pdf_file and not self.instance.pdf_file:
+                self.add_error('pdf_file', _('Un fichier PDF est requis'))
+        
+        return cleaned_data

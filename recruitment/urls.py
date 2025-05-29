@@ -664,5 +664,15 @@ urlpatterns = [
     path('ai-configuration/<int:config_id>/delete/', views.ai_configuration_delete, name='ai-configuration-delete'),
     path('ai-configuration/<int:config_id>/test/', views.ai_configuration_test, name='ai-configuration-test'),
     path('ai-configuration/<int:config_id>/toggle-default/', views.ai_configuration_toggle_default, name='ai-configuration-toggle-default'),
+
+    path('get-company-selectors/', views.get_company_selectors, name='get-company-selectors'),
+    path('get-company-managers/', views.get_company_managers, name='get-company-managers'),
+    path('get-company-positions/', views.get_company_positions, name='get-company-positions'),
     
+    path('privacy-policy/', views.privacy_policy_view, name='privacy-policy-view'),
+    path('privacy-policy/create/', views.privacy_policy_create, name='privacy-policy-create'),
+    path('privacy-policy/update/<int:policy_id>/', views.privacy_policy_update, name='privacy-policy-update'),
+    path('privacy-policy/delete/<int:policy_id>/', views.privacy_policy_delete, name='privacy-policy-delete'),
+    path('privacy-policy/toggle-default/<int:policy_id>/', views.privacy_policy_toggle_default, name='privacy-policy-toggle-default'),
+    path('get-privacy-policy/<int:recruitment_id>/', views.get_privacy_policy_content, name='get-privacy-policy-content'),
 ]

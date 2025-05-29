@@ -1,0 +1,134 @@
+<!-- recruitment/templates/recruitment/privacy_policy/privacy_policy_form.html -->
+{% load i18n %}
+
+<form
+    {% if policy.id %}
+        hx-post="{% url 'privacy-policy-update' policy.id %}"
+    {% else %}
+        hx-post="{% url 'privacy-policy-create' %}"
+    {% endif %}
+    hx-target="#privacyPolicyForm"
+    class="oh-profile-section"
+    enctype="multipart/form-data"
+>
+    {% csrf_token %}
+    
+    <div class="oh-inner-sidebar-content__body">
+        <!-- Nom de la politique -->
+        <div class="oh-input-group mb-3">
+            <label for="id_{{form.name.name}}" class="mb-1 required-star">{% trans "Nom de la politique" %}</label>
+            {{ form.name }}
+            {{ form.name.errors }}
+        </div>
+
+        <!-- Type de contenu -->
+        <div class="oh-input-group mb-3">
+            <label class="mb-2">{% trans "Type de contenu" %}</label>
+            <div class="oh-radio-group d-flex gap-4">
+                <div class="oh-radio">
+                    <input type="radio" id="id_content_type_0" name="content_type" value="text" {% if not policy.content_type or policy.content_type == 'text' %}checked{% endif %} onchange="toggleContentFields(this.value)">
+                    <label for="id_content_type_0" class="ml-2">
+                        <ion-icon name="document-text-outline" class="me-1"></ion-icon>
+                        {% trans "Texte" %}
+                    </label>
+                </div>
+                <div class="oh-radio">
+                    <input type="radio" id="id_content_type_1" name="content_type" value="pdf" {% if policy.content_type == 'pdf' %}checked{% endif %} onchange="toggleContentFields(this.value)">
+                    <label for="id_content_type_1" class="ml-2">
+                        <ion-icon name="document-outline" class="me-1"></ion-icon>
+                        {% trans "PDF" %}
+                    </label>
+                </div>
+            </div>
+            {{ form.content_type.errors }}
+        </div>
+
+        <!-- Contenu texte -->
+        <div class="oh-input-group mb-3" id="text-content-group" style="{% if policy.content_type == 'pdf' %}display: none;{% endif %}">
+            <label for="id_{{form.text_content.name}}" class="mb-1">{% trans "Contenu de la politique" %}</label>
+            {{ form.text_content }}
+            {{ form.text_content.errors }}
+        </div>
+
+        <!-- Fichier PDF -->
+        <div class="oh-input-group mb-3" id="pdf-content-group" style="{% if not policy.content_type or policy.content_type == 'text' %}display: none;{% endif %}">
+            <label for="id_{{form.pdf_file.name}}" class="mb-1">{% trans "Fichier PDF" %}</label>
+            {% if policy.pdf_file %}
+                <div class="current-file mb-2">
+                    <div class="d-flex align-items-center">
+                        <ion-icon name="document-outline" class="me-2"></ion-icon>
+                        <a href="{{ policy.pdf_file.url }}" target="_blank" class="current-file-link">
+                            {{ policy.pdf_file.name|slice:"25:" }}
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+            {{ form.pdf_file }}
+            {{ form.pdf_file.errors }}
+            <small class="oh-text--muted">{% trans "Format PDF uniquement, taille max 10MB" %}</small>
+        </div>
+
+        <!-- Configuration par défaut -->
+        <div class="oh-input-group mb-3">
+            <div class="oh-switch">
+                <label for="id_{{form.is_default.name}}" class="mb-1 mr-3">{% trans "Politique par défaut" %}</label>
+                {{ form.is_default }}
+            </div>
+            <small class="oh-text--muted">{% trans "Sera utilisée si aucune politique spécifique n'est assignée à une filiale" %}</small>
+        </div>
+
+        <!-- Sélection des filiales -->
+        <div class="oh-input-group mb-3">
+            <label class="mb-2">{% trans "Filiales concernées" %}</label>
+            <div class="oh-checkbox-group">
+                {% for choice in form.companies %}
+                    <div class="oh-switch mb-2">
+                        {{ choice.tag }}
+                        <label for="{{ choice.id_for_label }}" class="ml-2">{{ choice.choice_label }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+            {{ form.companies.errors }}
+            <small class="oh-text--muted">{% trans "Laissez vide pour utiliser uniquement comme politique par défaut" %}</small>
+        </div>
+    </div>
+
+    <div class="oh-modal__dialog-footer p-0 mt-3">
+        <button type="submit" class="oh-btn oh-btn--secondary oh-btn--shadow">
+            {% if policy.id %}
+                {% trans "Mettre à jour" %}
+            {% else %}
+                {% trans "Créer" %}
+            {% endif %}
+        </button>
+    </div>
+</form>
+
+<script>
+    function toggleContentFields(contentType) {
+        const textGroup = document.getElementById('text-content-group');
+        const pdfGroup = document.getElementById('pdf-content-group');
+        
+        if (contentType === 'text') {
+            textGroup.style.display = 'block';
+            pdfGroup.style.display = 'none';
+        } else {
+            textGroup.style.display = 'none';
+            pdfGroup.style.display = 'block';
+        }
+    }
+
+    // Initialiser Summernote pour le champ texte
+    $(document).ready(function() {
+        $('#id_text_content').summernote({
+            height: 300,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview']]
+            ]
+        });
+    });
+</script>

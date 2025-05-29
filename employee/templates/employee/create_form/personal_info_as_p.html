@@ -58,8 +58,16 @@
           {{ field.errors }}
         </div>
       </div>
-    {% elif field.label == 'Country' %}
-      <!-- Code pays/état inchangé -->
+    {% elif field.label == 'Company' %}
+      <div class="col-lg-6">
+        <div class="oh-input__group">
+          <label class="oh-label {% if field.field.required %}required-star{% endif %}" for="id_{{ field.name }}" title="{{ field.help_text|safe }}">
+            {{ field.label }}
+          </label>
+          {{ field|add_class:'form-control' }}
+          {{ field.errors }}
+        </div>
+      </div>
     {% endif %}
   {% endfor %}
 </div>
@@ -78,16 +86,14 @@
       <div class="oh-switch">{{form.is_selector}} {{form.is_selector.errors}}</div>
     </div>
   </div>
-  <!-- <div class="col-md-3">
-    <div class="oh-input__group">
-      <label class="oh-label">{% trans "Needs Password Change" %}</label>
-      <div class="oh-switch">{{form.needs_password_change}} {{form.needs_password_change.errors}}</div>
-    </div>
-  </div> -->
+  
+  <!-- Afficher is_superuser seulement si l'utilisateur est superadmin -->
+  {% if user.is_superuser %}
   <div class="col-md-3">
     <div class="oh-input__group">
       <label class="oh-label">{% trans "Is Superuser" %}</label>
       <div class="oh-switch">{{form.is_superuser}} {{form.is_superuser.errors}}</div>
     </div>
   </div>
+  {% endif %}
 </div>

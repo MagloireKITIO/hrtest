@@ -231,6 +231,16 @@
 														>
 													{% endif %}
 												</div>
+
+												<div class="oh-input-group">
+													{% if perms.recruitment.view_privacypolicy %}
+														<a
+															id="privacyPolicy"
+															href="{% url 'privacy-policy-view' %}"
+															class="oh-inner-sidebar__link oh-dropdown__link"
+														>{% trans "Politique de confidentialité" %}</a>
+													{% endif %}
+												</div>
 												
 												<!-- NOUVEAU: Configuration IA -->
 												<div class="oh-input-group">
@@ -239,8 +249,7 @@
 															id="aiConfiguration"
 															href="{% url 'ai-configuration-view' %}"
 															class="oh-inner-sidebar__link oh-dropdown__link"
-															>{% trans "Configuration IA" %}</a
-														>
+														>{% trans "Configuration IA" %}</a>
 													{% endif %}
 												</div>
 											</div>

@@ -918,6 +918,28 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="col-12 mb-3">
+                                    <div class="oh-input-group">
+                                        <div class="oh-switch">
+                                            <input type="checkbox" 
+                                                id="privacy_consent" 
+                                                name="privacy_consent" 
+                                                required
+                                                onchange="toggleSubmitButton(this)">
+                                            <label for="privacy_consent">
+                                                {% trans "J'accepte la" %} 
+                                                <a href="#" 
+                                                onclick="showPrivacyPolicy(event)" 
+                                                style="color: var(--primary-color); text-decoration: underline;">
+                                                    {% trans "politique de confidentialité" %}
+                                                </a>
+                                            </label>
+                                        </div>
+                                        <div id="privacy_consent_error" class="error-message" style="display: none;">
+                                            {% trans "Vous devez accepter la politique de confidentialité pour continuer" %}
+                                        </div>
+                                    </div>
+                                </div>
 
                                   <!-- Submit Button -->
                                   <div class="col-12">
@@ -935,8 +957,10 @@
                                         </p>
                                     {% else %}
                                         <button type="submit"
+                                                id="submitBtn"
                                                 class="oh-btn oh-btn--secondary w-100 submit-button"
-                                                onclick="validateForm(event)">
+                                                onclick="validateForm(event)"
+                                                disabled>
                                             <ion-icon name="paper-plane-outline" class="me-2"></ion-icon>
                                             {% trans "Submit Application" %}
                                         </button>
@@ -999,8 +1023,97 @@
           </div>
       </div>
   </div>
-  
+
+  <!-- Modal Politique de confidentialité -->
+<div class="oh-modal" id="privacyPolicyModal" role="dialog" aria-labelledby="privacyPolicyModalLabel" aria-hidden="true">
+    <div class="oh-modal__dialog oh-modal__dialog--lg">
+        <div class="oh-modal__dialog-header">
+            <span class="oh-modal__dialog-title" id="privacyPolicyModalLabel">
+                <ion-icon name="shield-checkmark-outline" class="me-2"></ion-icon>
+                {% trans "Politique de confidentialité" %}
+            </span>
+            <button type="button" onclick="event.stopPropagation()" class="oh-modal__close" aria-label="Close">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <div class="oh-modal__dialog-body" id="privacyPolicyContent" style="max-height: 70vh; overflow-y: auto;">
+            <!-- Le contenu sera chargé dynamiquement ici -->
+        </div>
+    </div>
+</div>
+
   <script>
+
+    // Fonction pour activer/désactiver le bouton submit
+function toggleSubmitButton(checkbox) {
+    const submitBtn = document.getElementById('submitBtn');
+    const errorDiv = document.getElementById('privacy_consent_error');
+    
+    if (checkbox.checked) {
+        submitBtn.disabled = false;
+        errorDiv.style.display = 'none';
+    } else {
+        submitBtn.disabled = true;
+        errorDiv.style.display = 'block';
+    }
+}
+
+// Fonction pour afficher la politique de confidentialité
+function showPrivacyPolicy(event) {
+    event.preventDefault();
+    
+    const recruitmentId = '{{ recruitment.id }}';
+    const modal = document.getElementById('privacyPolicyModal');
+    const contentDiv = document.getElementById('privacyPolicyContent');
+    
+    // Afficher un loader
+    contentDiv.innerHTML = `
+        <div class="text-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">{% trans "Chargement..." %}</span>
+            </div>
+        </div>
+    `;
+    
+    // Ouvrir le modal
+    $(modal).addClass('oh-modal--show');
+    
+    // Charger le contenu
+    fetch(`/recruitment/get-privacy-policy/${recruitmentId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (data.content_type === 'text') {
+                    contentDiv.innerHTML = `
+                        <div class="privacy-content p-4">
+                            ${data.content}
+                        </div>
+                    `;
+                } else { // PDF
+                    contentDiv.innerHTML = `
+                        <iframe 
+                            src="${data.pdf_url}" 
+                            style="width: 100%; height: 600px; border: none;"
+                            frameborder="0">
+                        </iframe>
+                    `;
+                }
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="oh-alert oh-alert--danger m-4">
+                        ${data.message || "{% trans 'Erreur lors du chargement de la politique' %}"}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            contentDiv.innerHTML = `
+                <div class="oh-alert oh-alert--danger m-4">
+                    {% trans "Erreur lors du chargement de la politique de confidentialité" %}
+                </div>
+            `;
+        });
+}
     // Fonctions utilitaires
     function getCookie(name) {
         let cookieValue = null;
@@ -1092,6 +1205,14 @@
         var errorList = document.getElementById("error-list");
         var form = document.querySelector('.application-form');
         let isValid = true;
+
+        const privacyConsent = document.getElementById('privacy_consent');
+        if (!privacyConsent.checked) {
+            event.preventDefault();
+            document.getElementById('privacy_consent_error').style.display = 'block';
+            privacyConsent.focus();
+            return false;
+        }
     
         // Validation des champs requis
         form.querySelectorAll('[required]').forEach(field => {

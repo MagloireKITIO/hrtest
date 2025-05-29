@@ -1525,10 +1525,18 @@ def employee_create_update_personal_info(request, obj_id=None):
     DEFAULT_PASSWORD = "activauser"
     employee = Employee.objects.filter(id=obj_id).first()
     form = EmployeeForm(request.POST, instance=employee)
+    
     try:
         if form.is_valid():
             if obj_id is None:  # Création
                 employee = form.save(commit=False)
+                
+                # SÉCURITÉ : Empêcher la création de superuser par des non-superusers
+                if not request.user.is_superuser:
+                    employee.is_superuser = False  # Forcer à False
+                    # Forcer l'assignation à la compagnie de l'utilisateur
+                    if request.user.employee_get.company_id:
+                        employee.company_id = request.user.employee_get.company_id
                 
                 # Vérifier si un utilisateur avec cet email existe déjà
                 if User.objects.filter(username=form.cleaned_data['email']).exists():
@@ -1548,8 +1556,8 @@ def employee_create_update_personal_info(request, obj_id=None):
                     group = form.cleaned_data['group']
                     user.groups.add(group)
                     
-                # Configuration super utilisateur si demandé
-                if form.cleaned_data.get('is_superuser'):
+                # Configuration super utilisateur si demandé ET si l'utilisateur actuel est superuser
+                if form.cleaned_data.get('is_superuser') and request.user.is_superuser:
                     user.is_superuser = True
                     user.is_staff = True
                     employee.company_id = None
@@ -1559,7 +1567,7 @@ def employee_create_update_personal_info(request, obj_id=None):
                 employee.needs_password_change = True
                 
                 # Assignation de la company seulement si pas superuser 
-                if not form.cleaned_data.get('is_superuser'):
+                if not form.cleaned_data.get('is_superuser') or not request.user.is_superuser:
                     if not form.cleaned_data.get('company_id'):
                         raise ValidationError(_("Company is required for non-superuser employees"))
                     employee.company_id = form.cleaned_data['company_id']
@@ -1570,13 +1578,21 @@ def employee_create_update_personal_info(request, obj_id=None):
             
             else:  # Mise à jour
                 employee = form.save(commit=False)
-            
-                # Mise à jour du statut superuser
-                if form.cleaned_data.get('is_superuser'):
+                
+                # SÉCURITÉ : Empêcher la modification du statut superuser par des non-superusers
+                if not request.user.is_superuser:
+                    # Conserver le statut superuser existant
+                    original_employee = Employee.objects.get(id=obj_id)
+                    if original_employee.employee_user_id:
+                        employee.employee_user_id.is_superuser = original_employee.employee_user_id.is_superuser
+                        employee.employee_user_id.is_staff = original_employee.employee_user_id.is_staff
+                
+                # Mise à jour du statut superuser (seulement si l'utilisateur actuel est superuser)
+                if request.user.is_superuser and form.cleaned_data.get('is_superuser'):
                     employee.employee_user_id.is_superuser = True
                     employee.employee_user_id.is_staff = True
                     employee.company_id = None  # Superuser voit toutes les companies
-                else:
+                elif request.user.is_superuser:
                     if not form.cleaned_data.get('company_id'):
                         raise ValidationError(_("Company is required for non-superuser employees"))
                     employee.company_id = form.cleaned_data['company_id']

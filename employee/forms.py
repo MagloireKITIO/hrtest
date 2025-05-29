@@ -227,9 +227,27 @@ class EmployeeForm(ModelForm):
         self.fields["phone"].widget.attrs["autocomplete"] = "phone"
         self.fields["address"].widget.attrs["autocomplete"] = "address"
 
+        # Récupérer l'utilisateur depuis le contexte de la requête
+        request = getattr(horilla_middlewares._thread_locals, "request", None)
+        
+        # Masquer le champ is_superuser si l'utilisateur n'est pas superadmin
+        if request and not request.user.is_superuser:
+            # Supprimer complètement le champ du formulaire
+            if 'is_superuser' in self.fields:
+                del self.fields['is_superuser']
+        
+        # Filtrer les compagnies selon les permissions de l'utilisateur
+        if request and hasattr(request.user, 'employee_get') and request.user.employee_get.company_id and not request.user.is_superuser:
+            # L'utilisateur ne peut assigner que sa propre compagnie
+            self.fields['company_id'].queryset = Company.objects.filter(
+                id=request.user.employee_get.company_id.id
+            )
+            self.fields['company_id'].initial = request.user.employee_get.company_id
+            self.fields['company_id'].empty_label = None  # Pas de choix vide
+
         if self.data.get('is_superuser'):
             self.fields['company_id'].required = False
-        
+                
         if self.instance and self.instance.pk:
             self.initial['company_id'] = self.instance.company_id
             self.initial['group'] = self.instance.employee_user_id.groups.first()

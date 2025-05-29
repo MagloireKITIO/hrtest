@@ -9,9 +9,11 @@ from django.contrib import admin
 from recruitment.models import (
     AIConfiguration,
     Candidate,
+    CandidatePrivacyConsent,
     CandidateRating,
     CandidateValidation,
     InterviewSchedule,
+    PrivacyPolicy,
     Recruitment,
     RecruitmentSurvey,
     RecruitmentSurveyAnswer,
@@ -60,3 +62,16 @@ class AIConfigurationAdmin(admin.ModelAdmin):
             'description': 'Sélectionnez les filiales qui utiliseront cette configuration'
         }),
     )
+
+@admin.register(PrivacyPolicy)
+class PrivacyPolicyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'content_type', 'is_default', 'is_active', 'created_at']
+    list_filter = ['is_default', 'is_active', 'content_type']
+    search_fields = ['name']
+    filter_horizontal = ['companies']
+
+@admin.register(CandidatePrivacyConsent) 
+class CandidatePrivacyConsentAdmin(admin.ModelAdmin):
+    list_display = ['candidate', 'policy', 'consented_at']
+    list_filter = ['consented_at', 'policy']
+    search_fields = ['candidate__name', 'candidate__email']

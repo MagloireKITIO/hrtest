@@ -1734,29 +1734,28 @@ def company_update(request, id, **kwargs):
 @hx_request_required
 @permission_required("base.add_department")
 def department_create(request):
-   """
-   This method renders form and template to create department
-   """
-   company_id = request.GET.get('company')
-   company = Company.objects.get(id=company_id) if company_id else None
-   form = DepartmentForm(initial={'company_id': company})
+    company_id = request.GET.get('company')
+    company = Company.objects.get(id=company_id) if company_id else None
+    form = DepartmentForm(initial={'company_id': company})
 
-   if request.method == "POST":
-       form = DepartmentForm(request.POST)
-       if form.is_valid():
-           form.save()
-           form = DepartmentForm()
-           messages.success(request, _("Department has been created successfully!"))
-           return HttpResponse("<script>window.location.reload()</script>")
+    if request.method == "POST":
+        form = DepartmentForm(request.POST)
+        if form.is_valid():
+            department = form.save()
+            # AJOUT: Lier automatiquement aux compagnies sélectionnées
+            if form.cleaned_data.get('company_id'):
+                department.company_id.set(form.cleaned_data['company_id'])
+            messages.success(request, _("Department has been created successfully!"))
+            return HttpResponse("<script>window.location.reload()</script>")
 
-   return render(
-       request,
-       "base/department/department_form.html",
-       {
-           "form": form,
-           "company": company,
-       },
-   )
+    return render(
+        request,
+        "base/department/department_form.html",
+        {
+            "form": form,
+            "company": company,
+        },
+    )
 
 
 @login_required

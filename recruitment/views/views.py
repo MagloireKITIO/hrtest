@@ -97,6 +97,7 @@ from recruitment.forms import (
     ApplicationForm,
     CandidateCreationForm,
     CandidateExportForm,
+    PrivacyPolicyForm,
     RecruitmentCreationForm,
     RejectReasonForm,
     ResumeForm,
@@ -118,6 +119,7 @@ from recruitment.models import (
     CandidateRating,
     CandidateValidation,
     InterviewSchedule,
+    PrivacyPolicy,
     Recruitment,
     RecruitmentGeneralSetting,
     RecruitmentSurvey,
@@ -264,16 +266,22 @@ def recruitment(request):
     the permission is checking manually instead of using django permission permission
     to the  recruitment managers
     """
-    form = RecruitmentCreationForm()
+    form = RecruitmentCreationForm(user=request.user)  # Passer l'utilisateur
     if request.GET:
-        form = RecruitmentCreationForm(initial=request.GET.dict())
+        form = RecruitmentCreationForm(initial=request.GET.dict(), user=request.user)
     dynamic = (
         request.GET.get("dynamic") if request.GET.get("dynamic") != "None" else None
     )
     if request.method == "POST":
-        form = RecruitmentCreationForm(request.POST)
+        form = RecruitmentCreationForm(request.POST, user=request.user)
         if form.is_valid():
             recruitment_obj = form.save(commit=False)
+            
+            # S'assurer que la compagnie est celle de l'utilisateur si pas superuser
+            if not request.user.is_superuser and hasattr(request.user, 'employee_get'):
+                user_company = request.user.employee_get.company_id
+                if user_company:
+                    recruitment_obj.company_id = user_company
             
             # Handle Google Form generation if requested
             if form.cleaned_data.get('generate_form'):
@@ -386,7 +394,6 @@ def application_form(request):
                 from django.utils import timezone
                 today = timezone.now().date()
                 is_expired = recruitment.end_date < today
-                
 
     if request.method == "POST":
         logger.info("Processing POST request for application form")
@@ -406,6 +413,8 @@ def application_form(request):
                     messages.error(request, _("Error processing resume file"))
 
         form = ApplicationForm(request.POST, request.FILES)
+        # Passer la requête au formulaire pour obtenir l'adresse IP
+        form.request = request
         
         try:
             if form.is_valid():
@@ -606,6 +615,76 @@ def get_all_employees(request):
     return JsonResponse({'employees': data})
 
 @login_required
+def get_company_selectors(request):
+    """Return list of selectors from the user's company"""
+    if not hasattr(request.user, 'employee_get'):
+        return JsonResponse({'selectors': {}})
+    
+    user_company = request.user.employee_get.company_id
+    
+    if request.user.is_superuser:
+        # Superuser voit tous les sélecteurs
+        selectors = Employee.objects.filter(is_active=True, is_selector=True)
+    elif user_company:
+        # Utilisateur normal voit seulement les sélecteurs de sa compagnie
+        selectors = Employee.objects.filter(
+            is_active=True, 
+            is_selector=True,
+            company_id=user_company
+        )
+    else:
+        selectors = Employee.objects.none()
+    
+    data = {str(emp.id): emp.get_full_name() for emp in selectors}
+    return JsonResponse({'selectors': data})
+
+@login_required
+def get_company_managers(request):
+    """Return list of managers from the user's company"""
+    if not hasattr(request.user, 'employee_get'):
+        return JsonResponse({'managers': {}})
+    
+    user_company = request.user.employee_get.company_id
+    
+    if request.user.is_superuser:
+        # Superuser voit tous les managers
+        managers = Employee.objects.filter(is_active=True)
+    elif user_company:
+        # Utilisateur normal voit seulement les managers de sa compagnie
+        managers = Employee.objects.filter(
+            is_active=True,
+            company_id=user_company
+        )
+    else:
+        managers = Employee.objects.none()
+    
+    data = {str(emp.id): emp.get_full_name() for emp in managers}
+    return JsonResponse({'managers': data})
+
+@login_required
+def get_company_positions(request):
+    """Return list of job positions from the user's company"""
+    if not hasattr(request.user, 'employee_get'):
+        return JsonResponse({'positions': {}})
+    
+    user_company = request.user.employee_get.company_id
+    
+    if request.user.is_superuser:
+        # Superuser voit toutes les positions
+        positions = JobPosition.objects.filter(is_active=True)
+    elif user_company:
+        # Utilisateur normal voit seulement les positions de sa compagnie
+        positions = JobPosition.objects.filter(
+            is_active=True,
+            company_id=user_company
+        )
+    else:
+        positions = JobPosition.objects.none()
+    
+    data = {str(pos.id): str(pos) for pos in positions}
+    return JsonResponse({'positions': data})
+
+@login_required
 def stage_managers_options(request):
     """
     Return filtered list of employees based on stage type
@@ -687,6 +766,14 @@ def recruitment_update(request, rec_id):
         rec_id (int): Recruitment ID
     """
     recruitment_obj = Recruitment.objects.get(id=rec_id)
+    
+    # Vérifier les permissions de compagnie
+    if not request.user.is_superuser and hasattr(request.user, 'employee_get'):
+        user_company = request.user.employee_get.company_id
+        if user_company and recruitment_obj.company_id != user_company:
+            messages.error(request, _("Vous n'avez pas l'autorisation de modifier ce recrutement."))
+            return HttpResponse("<script>window.location.reload();</script>")
+    
     survey_template_list = []
     survey_templates = RecruitmentSurvey.objects.filter(
         recruitment_ids=rec_id
@@ -705,7 +792,8 @@ def recruitment_update(request, rec_id):
 
     form = RecruitmentCreationForm(
         instance=recruitment_obj, 
-        initial=initial_data  # <-- Ajout des données initiales
+        initial=initial_data,
+        user=request.user  # Passer l'utilisateur
     )
     
     dynamic = request.GET.get("dynamic") if request.GET.get("dynamic") != "None" else None
@@ -713,13 +801,14 @@ def recruitment_update(request, rec_id):
     if request.method == "POST":
         form = RecruitmentCreationForm(
             request.POST, 
-            instance=recruitment_obj
+            instance=recruitment_obj,
+            user=request.user  # Passer l'utilisateur
         )
         if form.is_valid():
             recruitment_obj = form.save(commit=False)
             
             # Mise à jour des relations ManyToMany
-            recruitment_obj.selectors.set(form.cleaned_data['selectors'])  # <-- Sélecteurs
+            recruitment_obj.selectors.set(form.cleaned_data['selectors'])
             recruitment_obj.recruitment_managers.set(
                 Employee.objects.filter(
                     id__in=form.data.getlist("recruitment_managers")
@@ -1899,10 +1988,11 @@ def stage(request):
     This method is used to create stages, also several permission assigned to the stage managers
     """
     form = StageCreationForm(
-        initial={"recruitment_id": request.GET.get("recruitment_id")}
+        initial={"recruitment_id": request.GET.get("recruitment_id")},
+        user=request.user  # Passer l'utilisateur
     )
     if request.method == "POST":
-        form = StageCreationForm(request.POST)
+        form = StageCreationForm(request.POST, user=request.user)
         if form.is_valid():
             stage_obj = form.save()
             stage_obj.stage_managers.set(
@@ -4592,3 +4682,156 @@ def ai_configuration_toggle_default(request, config_id):
     
     return JsonResponse({'status': 'success' if not messages.get_messages(request) else 'error'})
 
+@login_required
+@permission_required('recruitment.view_privacypolicy')
+def privacy_policy_view(request):
+    """
+    Vue pour afficher toutes les politiques de confidentialité
+    """
+    policies = PrivacyPolicy.objects.filter(is_active=True).order_by('-is_default', 'name')
+    
+    if policies.exists():
+        template = "recruitment/privacy_policy/privacy_policy_view.html"
+    else:
+        template = "recruitment/privacy_policy/privacy_policy_empty.html"
+    
+    return render(request, template, {
+        'policies': policies
+    })
+
+
+@login_required
+@permission_required('recruitment.add_privacypolicy')
+@hx_request_required
+def privacy_policy_create(request):
+    """
+    Vue pour créer une nouvelle politique de confidentialité
+    """
+    form = PrivacyPolicyForm()
+    
+    if request.method == 'POST':
+        form = PrivacyPolicyForm(request.POST, request.FILES)
+        if form.is_valid():
+            policy = form.save()
+            messages.success(request, _("Politique de confidentialité créée avec succès"))
+            return HttpResponse("<script>window.location.reload()</script>")
+    
+    return render(request, 'recruitment/privacy_policy/privacy_policy_form.html', {
+        'form': form,
+        'title': _("Créer une politique de confidentialité")
+    })
+
+
+@login_required
+@permission_required('recruitment.change_privacypolicy')
+@hx_request_required
+def privacy_policy_update(request, policy_id):
+    """
+    Vue pour modifier une politique de confidentialité
+    """
+    policy = get_object_or_404(PrivacyPolicy, id=policy_id)
+    form = PrivacyPolicyForm(instance=policy)
+    
+    if request.method == 'POST':
+        form = PrivacyPolicyForm(request.POST, request.FILES, instance=policy)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _("Politique de confidentialité mise à jour avec succès"))
+            return HttpResponse("<script>window.location.reload()</script>")
+    
+    return render(request, 'recruitment/privacy_policy/privacy_policy_form.html', {
+        'form': form,
+        'policy': policy,
+        'title': _("Modifier la politique de confidentialité")
+    })
+
+
+@login_required
+@permission_required('recruitment.delete_privacypolicy')
+def privacy_policy_delete(request, policy_id):
+    """
+    Vue pour supprimer une politique de confidentialité
+    """
+    try:
+        policy = PrivacyPolicy.objects.get(id=policy_id)
+        if policy.is_default:
+            messages.error(request, _("Impossible de supprimer la politique par défaut"))
+        else:
+            policy.delete()
+            messages.success(request, _("Politique de confidentialité supprimée avec succès"))
+    except PrivacyPolicy.DoesNotExist:
+        messages.error(request, _("Politique de confidentialité introuvable"))
+    except Exception as e:
+        messages.error(request, _("Erreur lors de la suppression: {}").format(str(e)))
+    
+    return redirect('privacy-policy-view')
+
+
+@login_required
+@require_http_methods(["POST"])
+def privacy_policy_toggle_default(request, policy_id):
+    """
+    Vue pour définir une politique comme par défaut
+    """
+    try:
+        policy = PrivacyPolicy.objects.get(id=policy_id)
+        
+        # Retirer le flag par défaut de toutes les autres politiques
+        PrivacyPolicy.objects.exclude(id=policy_id).update(is_default=False)
+        
+        # Définir cette politique comme par défaut
+        policy.is_default = True
+        policy.save()
+        
+        messages.success(request, _("Politique définie comme par défaut"))
+        
+    except PrivacyPolicy.DoesNotExist:
+        messages.error(request, _("Politique introuvable"))
+    except Exception as e:
+        messages.error(request, _("Erreur: {}").format(str(e)))
+    
+    return redirect('privacy-policy-view')
+
+
+def get_privacy_policy_content(request, recruitment_id):
+    """
+    Vue AJAX pour récupérer le contenu de la politique de confidentialité
+    """
+    try:
+        recruitment = Recruitment.objects.get(id=recruitment_id)
+        company = recruitment.company_id
+        
+        # Récupérer la politique appropriée
+        policy = PrivacyPolicy.get_policy_for_company(company)
+        
+        if not policy:
+            return JsonResponse({
+                'status': 'error',
+                'message': _("Aucune politique de confidentialité configurée")
+            }, status=404)
+        
+        response_data = {
+            'status': 'success',
+            'policy_id': policy.id,
+            'name': policy.name,
+            'content_type': policy.content_type
+        }
+        
+        if policy.content_type == 'text':
+            response_data['content'] = policy.text_content
+        else:  # PDF
+            response_data['pdf_url'] = policy.pdf_file.url
+        
+        return JsonResponse(response_data)
+        
+    except Recruitment.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': _("Recrutement introuvable")
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération de la politique: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
