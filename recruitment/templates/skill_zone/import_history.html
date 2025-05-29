@@ -1,0 +1,192 @@
+<!-- recruitment/templates/skill_zone/import_history.html -->
+{% extends 'index.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+<div class="oh-wrapper">
+    <section class="oh-main__topbar">
+        <div class="oh-main__titlebar oh-main__titlebar--left">
+            <h1 class="oh-main__titlebar-title fw-bold mb-0">
+                {% trans "Historique des imports" %}
+            </h1>
+        </div>
+        <div class="oh-main__titlebar oh-main__titlebar--right">
+            <a href="{% url 'skillzone-bulk-import' %}" class="oh-btn oh-btn--primary">
+                <ion-icon name="add-outline" class="me-1"></ion-icon>
+                {% trans "Nouvel import" %}
+            </a>
+            <a href="{% url 'skill-zone-view' %}" class="oh-btn oh-btn--light ms-2">
+                <ion-icon name="arrow-back-outline" class="me-1"></ion-icon>
+                {% trans "Retour aux zones" %}
+            </a>
+        </div>
+    </section>
+
+    <div class="oh-card mt-4">
+        <div class="oh-card__body">
+            {% if imports %}
+                <div class="oh-sticky-table">
+                    <div class="oh-sticky-table__table">
+                        <div class="oh-sticky-table__thead">
+                            <div class="oh-sticky-table__tr">
+                                <div class="oh-sticky-table__th">{% trans "Date" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Initié par" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Statut" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Progression" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "CV traités" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Réussis" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Échoués" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Nouvelles zones" %}</div>
+                                <div class="oh-sticky-table__th">{% trans "Actions" %}</div>
+                            </div>
+                        </div>
+                        <div class="oh-sticky-table__tbody">
+                            {% for import in imports %}
+                            <div class="oh-sticky-table__tr" data-import-id="{{ import.id }}">
+                                <div class="oh-sticky-table__td">
+                                    {{ import.import_date|date:"d/m/Y H:i" }}
+                                </div>
+                                <div class="oh-sticky-table__td">
+                                    {% if import.initiated_by %}
+                                        {{ import.initiated_by.get_full_name }}
+                                    {% else %}
+                                        <span class="oh-text--muted">{% trans "Système" %}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="oh-sticky-table__td">
+                                    <span class="oh-badge oh-badge--{% if import.status == 'completed' %}success{% elif import.status == 'failed' %}danger{% elif import.status == 'in_progress' %}warning{% else %}secondary{% endif %}">
+                                        {{ import.get_status_display }}
+                                    </span>
+                                </div>
+                                <div class="oh-sticky-table__td">
+                                    <div class="oh-progress" style="width: 120px;">
+                                        <div class="oh-progress__bar" style="width: {{ import.get_progress_percentage }}%"></div>
+                                    </div>
+                                    <small class="d-block text-center mt-1">{{ import.get_progress_percentage }}%</small>
+                                </div>
+                                <div class="oh-sticky-table__td text-center">
+                                    {{ import.processed_cvs }}/{{ import.total_cvs }}
+                                </div>
+                                <div class="oh-sticky-table__td text-center">
+                                    <span class="text-success">{{ import.successful_classifications }}</span>
+                                </div>
+                                <div class="oh-sticky-table__td text-center">
+                                    <span class="text-danger">{{ import.failed_classifications }}</span>
+                                </div>
+                                <div class="oh-sticky-table__td text-center">
+                                    {% if import.new_zones_created > 0 %}
+                                        <span class="oh-badge oh-badge--info">{{ import.new_zones_created }}</span>
+                                    {% else %}
+                                        <span class="oh-text--muted">0</span>
+                                    {% endif %}
+                                </div>
+                                <div class="oh-sticky-table__td">
+                                    <div class="oh-btn-group">
+                                        <a href="{% url 'skillzone-import-detail' import.id %}" 
+                                           class="oh-btn oh-btn--light oh-btn--small"
+                                           data-bs-toggle="tooltip" 
+                                           title="{% trans 'Voir les détails' %}">
+                                            <ion-icon name="eye-outline"></ion-icon>
+                                        </a>
+                                        {% if import.status == 'in_progress' %}
+                                            <button class="oh-btn oh-btn--light oh-btn--small refresh-status"
+                                                    data-import-id="{{ import.id }}"
+                                                    data-bs-toggle="tooltip" 
+                                                    title="{% trans 'Actualiser' %}">
+                                                <ion-icon name="refresh-outline"></ion-icon>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <ion-icon name="document-outline" style="font-size: 48px; color: #ccc;"></ion-icon>
+                    <p class="oh-text--muted mt-3">{% trans "Aucun import effectué" %}</p>
+                    <a href="{% url 'skillzone-bulk-import' %}" class="oh-btn oh-btn--primary mt-3">
+                        <ion-icon name="cloud-upload-outline" class="me-1"></ion-icon>
+                        {% trans "Commencer un import" %}
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Actualisation automatique pour les imports en cours
+    function checkInProgressImports() {
+        document.querySelectorAll('[data-import-id]').forEach(row => {
+            const statusBadge = row.querySelector('.oh-badge');
+            
+            if (statusBadge && (statusBadge.textContent.includes('In Progress') || statusBadge.textContent.includes('En cours'))) {
+                const importId = row.dataset.importId;
+                
+                fetch(`{% url 'skillzone-import-status' 0 %}`.replace('0', importId), {
+                    headers: {
+                        'HX-Request': 'true'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Mettre à jour la barre de progression
+                    const progressBar = row.querySelector('.oh-progress__bar');
+                    const progressText = row.querySelector('.oh-progress + small');
+                    if (progressBar) {
+                        progressBar.style.width = data.progress + '%';
+                    }
+                    if (progressText) {
+                        progressText.textContent = data.progress + '%';
+                    }
+                    
+                    // Mettre à jour les compteurs
+                    row.querySelector('.oh-sticky-table__td:nth-child(5)').textContent = 
+                        `${data.processed}/${data.total}`;
+                    row.querySelector('.oh-sticky-table__td:nth-child(6) span').textContent = 
+                        data.successful;
+                    row.querySelector('.oh-sticky-table__td:nth-child(7) span').textContent = 
+                        data.failed;
+                    
+                    // Si terminé, recharger la page
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                });
+            }
+        });
+    }
+    
+    // Vérifier toutes les 3 secondes
+    setInterval(checkInProgressImports, 3000);
+    
+    // Bouton d'actualisation manuelle
+    document.querySelectorAll('.refresh-status').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const icon = this.querySelector('ion-icon');
+            icon.style.animation = 'spin 1s linear';
+            checkInProgressImports();
+            setTimeout(() => {
+                icon.style.animation = '';
+            }, 1000);
+        });
+    });
+});
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</script>
+{% endblock %}

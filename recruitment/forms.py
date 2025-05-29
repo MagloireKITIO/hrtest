@@ -1856,3 +1856,75 @@ class PrivacyPolicyForm(ModelForm):
                 self.add_error('pdf_file', _('Un fichier PDF est requis'))
         
         return cleaned_data
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    """Widget personnalisé pour l'upload de fichiers multiples"""
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    """Champ personnalisé pour l'upload de fichiers multiples"""
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = single_file_clean(data, initial)
+        return result
+
+
+class SkillZoneBulkImportForm(forms.Form):
+    """Formulaire pour l'import en masse de CV"""
+    
+    cv_files = MultipleFileField(
+        label=_("CV Files (PDF)"),
+        help_text=_("Sélectionnez plusieurs fichiers PDF à importer"),
+        widget=MultipleFileInput(attrs={
+            'accept': '.pdf',
+            'class': 'oh-input'
+        })
+    )
+    
+    default_recruitment = forms.ModelChoiceField(
+        queryset=Recruitment.objects.filter(closed=False, is_active=True),
+        required=False,
+        label=_("Recrutement par défaut"),
+        help_text=_("Recrutement à utiliser pour les candidats importés"),
+        widget=forms.Select(attrs={'class': 'oh-select'})
+    )
+    
+    auto_create_zones = forms.BooleanField(
+        required=False,
+        initial=True,
+        label=_("Créer automatiquement les zones manquantes"),
+        help_text=_("Permet à l'IA de créer de nouvelles zones si nécessaire")
+    )
+    
+    min_confidence = forms.FloatField(
+        initial=0.7,
+        min_value=0.0,
+        max_value=1.0,
+        label=_("Score de confiance minimum"),
+        help_text=_("Score minimum pour la classification automatique (0-1)"),
+        widget=forms.NumberInput(attrs={
+            'class': 'oh-input',
+            'step': '0.1'
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtrer les recrutements par compagnie si possible
+        if hasattr(self, 'user') and hasattr(self.user, 'employee_get'):
+            company = self.user.employee_get.company_id
+            if company:
+                self.fields['default_recruitment'].queryset = Recruitment.objects.filter(
+                    company_id=company,
+                    closed=False,
+                    is_active=True
+                )

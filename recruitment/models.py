@@ -1270,9 +1270,8 @@ class RecruitmentMailTemplate(HorillaModel):
 
 class SkillZone(HorillaModel):
     """ "
-    Model for talent pool
+    Model for talent pool with AI classification support
     """
-
     title = models.CharField(max_length=50, verbose_name="Skill Zone")
     description = models.TextField(verbose_name=_("Description"), max_length=255)
     company_id = models.ForeignKey(
@@ -1282,7 +1281,40 @@ class SkillZone(HorillaModel):
         on_delete=models.CASCADE,
         verbose_name=_("Company"),
     )
+    
+    # Nouveaux champs pour l'IA
+    auto_generated = models.BooleanField(
+        default=False,
+        verbose_name=_("Auto Generated"),
+        help_text=_("Indicates if this skill zone was automatically created by AI")
+    )
+    keywords = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Keywords"),
+        help_text=_("Keywords associated with this skill zone for search and classification")
+    )
+    ai_embedding = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name=_("AI Embedding"),
+        help_text=_("Vector embedding for semantic search")
+    )
+    typical_skills = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_("Typical Skills"),
+        help_text=_("List of typical skills for this zone")
+    )
+    
     objects = HorillaCompanyManager()
+
+    class Meta:
+        verbose_name = _("Skill Zone")
+        verbose_name_plural = _("Skill Zones")
+        indexes = [
+            models.Index(fields=['auto_generated', 'is_active'], name='skillzone_auto_active_idx'),
+        ]
 
     def get_active(self):
         return SkillZoneCandidate.objects.filter(is_active=True, skill_zone_id=self)
@@ -1290,12 +1322,34 @@ class SkillZone(HorillaModel):
     def __str__(self) -> str:
         return self.title
 
+    def get_candidates_count(self):
+        """Retourne le nombre de candidats actifs dans cette zone"""
+        return self.skillzonecandidate_set.filter(is_active=True).count()
+    
+    def get_average_confidence(self):
+        """Retourne le score de confiance moyen pour les classifications automatiques"""
+        auto_classified = self.skillzonecandidate_set.filter(
+            auto_classified=True,
+            confidence_score__isnull=False
+        )
+        if auto_classified.exists():
+            return auto_classified.aggregate(
+                avg_confidence=models.Avg('confidence_score')
+            )['avg_confidence']
+        return None
+
 
 class SkillZoneCandidate(HorillaModel):
     """
-    Model for saving candidate data's for future recruitment
+    Model for saving candidate data's for future recruitment with AI classification
     """
-
+    SOURCE_CHOICES = [
+        ('manual', _('Manual')),
+        ('application', _('Job Application')),
+        ('import', _('Bulk Import')),
+        ('ai_suggestion', _('AI Suggestion')),
+    ]
+    
     skill_zone_id = models.ForeignKey(
         SkillZone,
         verbose_name=_("Skill Zone"),
@@ -1310,16 +1364,36 @@ class SkillZoneCandidate(HorillaModel):
         related_name="skillzonecandidate_set",
         verbose_name=_("Candidate"),
     )
-    # job_position_id=models.ForeignKey(
-    #     JobPosition,
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     related_name="talent_pool",
-    #     verbose_name=_("Job Position")
-    # )
-
     reason = models.CharField(max_length=200, verbose_name=_("Reason"))
     added_on = models.DateField(auto_now_add=True)
+    
+    # Nouveaux champs pour l'IA
+    confidence_score = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name=_("Confidence Score"),
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_("AI confidence score for this classification (0-1)")
+    )
+    source_tag = models.CharField(
+        max_length=50,
+        default='manual',
+        choices=SOURCE_CHOICES,
+        verbose_name=_("Source"),
+        help_text=_("How this candidate was added to the skill zone")
+    )
+    auto_classified = models.BooleanField(
+        default=False,
+        verbose_name=_("Auto Classified"),
+        help_text=_("Was this classification done automatically by AI?")
+    )
+    classification_details = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name=_("Classification Details"),
+        help_text=_("AI analysis details for this classification")
+    )
+    
     objects = HorillaCompanyManager(
         related_company_field="candidate_id__recruitment_id__company_id"
     )
@@ -1328,14 +1402,87 @@ class SkillZoneCandidate(HorillaModel):
         """
         Meta class to add the additional info
         """
-
         unique_together = (
             "skill_zone_id",
             "candidate_id",
         )
+        verbose_name = _("Skill Zone Candidate")
+        verbose_name_plural = _("Skill Zone Candidates")
+        indexes = [
+            models.Index(fields=['source_tag', 'auto_classified'], name='skillzone_cand_source_idx'),
+        ]
 
     def __str__(self) -> str:
         return str(self.candidate_id.get_full_name())
+    
+    def get_confidence_percentage(self):
+        """Retourne le score de confiance en pourcentage"""
+        if self.confidence_score:
+            return round(self.confidence_score * 100, 1)
+        return None
+
+
+class SkillZoneImportHistory(HorillaModel):
+    """
+    Model to track bulk CV import history for skill zones
+    """
+    STATUS_CHOICES = [
+        ('pending', _('Pending')),
+        ('in_progress', _('In Progress')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+    ]
+    
+    import_date = models.DateTimeField(auto_now_add=True)
+    total_cvs = models.IntegerField(default=0)
+    processed_cvs = models.IntegerField(default=0)
+    successful_classifications = models.IntegerField(default=0)
+    failed_classifications = models.IntegerField(default=0)
+    new_zones_created = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    error_log = models.JSONField(default=list, blank=True)
+    initiated_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='skillzone_imports'
+    )
+    company_id = models.ForeignKey(
+        Company,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        verbose_name=_("Company"),
+    )
+    
+    objects = HorillaCompanyManager()
+
+    class Meta:
+        verbose_name = _("Skill Zone Import History")
+        verbose_name_plural = _("Skill Zone Import Histories")
+        ordering = ['-import_date']
+
+    def __str__(self):
+        return f"Import {self.import_date.strftime('%Y-%m-%d %H:%M')} - {self.status}"
+    
+    def get_progress_percentage(self):
+        """Retourne le pourcentage de progression"""
+        if self.total_cvs > 0:
+            return round((self.processed_cvs / self.total_cvs) * 100, 1)
+        return 0
+    
+    def add_error(self, cv_identifier, error_message):
+        """Ajoute une erreur au log"""
+        self.error_log.append({
+            'cv': cv_identifier,
+            'error': error_message,
+            'timestamp': timezone.now().isoformat()
+        })
+        self.save(update_fields=['error_log'])
 
 
 class CandidateRating(HorillaModel):
@@ -1524,6 +1671,78 @@ class AIConfiguration(HorillaModel):
         verbose_name=_("Temperature"),
         help_text=_("Température du modèle (0.0 = déterministe, 2.0 = créatif)")
     )
+
+    skillzone_classification_prompt = models.TextField(
+        verbose_name=_("SkillZone Classification Prompt"),
+        help_text=_("Prompt for classifying candidates into skill zones"),
+        default="""IMPORTANT: Répondez uniquement avec un JSON valide sans texte additionnel.
+
+        Vous êtes un expert RH qui analyse des CV pour les classer dans des zones de compétences appropriées.
+
+        Zones de compétences disponibles:
+        {}
+
+        Analysez le CV et:
+        1. Identifiez les zones de compétences correspondantes (max 3)
+        2. Calculez un score de confiance pour chaque zone (0-1)
+        3. Si aucune zone ne correspond bien (score < 0.5), suggérez une nouvelle zone
+
+        Format JSON requis:
+        {{
+            "matched_zones": [
+                {{
+                    "zone_id": "ID ou nom de la zone",
+                    "confidence": 0.85,
+                    "reasons": ["Raison 1", "Raison 2"]
+                }}
+            ],
+            "suggested_new_zone": {{
+                "name": "Nom suggéré",
+                "description": "Description détaillée",
+                "keywords": ["mot-clé1", "mot-clé2", ...],
+                "typical_skills": ["compétence1", "compétence2", ...]
+            }},
+            "extracted_skills": ["skill1", "skill2", ...],
+            "professional_level": "junior|intermediate|senior|expert"
+        }}"""
+    )
+    
+    skillzone_embedding_prompt = models.TextField(
+        verbose_name=_("SkillZone Embedding Prompt"),
+        help_text=_("Prompt for generating embeddings for skill zones"),
+        default="""Générez une représentation sémantique dense de cette zone de compétences.
+
+        Zone: {}
+        Description: {}
+        Mots-clés: {}
+
+        Créez un résumé sémantique riche incluant:
+        - Le domaine principal
+        - Les compétences techniques associées
+        - Les rôles typiques
+        - Les technologies pertinentes
+        - Le niveau d'expertise requis"""
+    )
+    
+    enable_auto_skillzone_creation = models.BooleanField(
+        default=True,
+        verbose_name=_("Enable Auto SkillZone Creation"),
+        help_text=_("Allow AI to automatically create new skill zones when needed")
+    )
+    
+    min_confidence_for_auto_classification = models.FloatField(
+        default=0.7,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        verbose_name=_("Minimum Confidence for Auto Classification"),
+        help_text=_("Minimum confidence score required for automatic classification")
+    )
+    
+    max_zones_per_candidate = models.IntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        verbose_name=_("Max Zones per Candidate"),
+        help_text=_("Maximum number of skill zones a candidate can be classified into")
+    )
     
     objects = HorillaCompanyManager()
 
@@ -1553,6 +1772,31 @@ class AIConfiguration(HorillaModel):
         
         # Fallback sur la configuration par défaut
         return cls.objects.filter(is_default=True, is_active=True).first()
+
+    def get_skillzone_prompt(self, available_zones):
+        """
+        Génère le prompt de classification avec les zones disponibles
+        """
+        zones_info = []
+        for zone in available_zones:
+            zone_info = f"- {zone.title}: {zone.description}"
+            if zone.keywords:
+                zone_info += f" (Mots-clés: {', '.join(zone.keywords[:5])})"
+            zones_info.append(zone_info)
+        
+        zones_text = "\n".join(zones_info) if zones_info else "Aucune zone existante"
+        return self.skillzone_classification_prompt.format(zones_text)
+    
+    def should_create_new_zone(self, confidence_scores):
+        """
+        Détermine si une nouvelle zone doit être créée
+        """
+        if not self.enable_auto_skillzone_creation:
+            return False
+        
+        # Si toutes les correspondances ont un score faible
+        return all(score < self.min_confidence_for_auto_classification 
+                  for score in confidence_scores)
 
     @classmethod  
     def get_default_config(cls):

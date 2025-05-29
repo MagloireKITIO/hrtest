@@ -1,0 +1,137 @@
+<!-- recruitment/templates/skill_zone/import_detail.html -->
+{% extends 'index.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+<div class="oh-wrapper">
+    <section class="oh-main__topbar">
+        <div class="oh-main__titlebar oh-main__titlebar--left">
+            <h1 class="oh-main__titlebar-title fw-bold mb-0">
+                {% trans "Détails de l'import" %}
+            </h1>
+            <a href="{% url 'skillzone-import-history' %}" class="oh-btn oh-btn--light ms-3">
+                <ion-icon name="arrow-back-outline"></ion-icon>
+                {% trans "Retour" %}
+            </a>
+        </div>
+    </section>
+
+    <div class="row mt-4">
+        <!-- Informations générales -->
+        <div class="col-md-4">
+            <div class="oh-card">
+                <div class="oh-card__header">
+                    <h5 class="oh-card__title">{% trans "Informations" %}</h5>
+                </div>
+                <div class="oh-card__body">
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Date d'import" %}</label>
+                        <p class="mb-0">{{ import.import_date|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Initié par" %}</label>
+                        <p class="mb-0">{{ import.initiated_by.get_full_name }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Statut" %}</label>
+                        <p class="mb-0">
+                            <span class="oh-badge oh-badge--{% if import.status == 'completed' %}success{% elif import.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                {{ import.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="col-md-4">
+            <div class="oh-card">
+                <div class="oh-card__header">
+                    <h5 class="oh-card__title">{% trans "Statistiques" %}</h5>
+                </div>
+                <div class="oh-card__body">
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Total CV" %}</label>
+                        <p class="mb-0">{{ import.total_cvs }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "CV traités" %}</label>
+                        <p class="mb-0">{{ import.processed_cvs }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Classifications réussies" %}</label>
+                        <p class="mb-0 text-success">{{ import.successful_classifications }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="oh-label">{% trans "Classifications échouées" %}</label>
+                        <p class="mb-0 text-danger">{{ import.failed_classifications }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nouvelles zones créées -->
+        <div class="col-md-4">
+            <div class="oh-card">
+                <div class="oh-card__header">
+                    <h5 class="oh-card__title">
+                        {% trans "Nouvelles zones créées" %}
+                        <span class="oh-badge oh-badge--info ms-2">{{ import.new_zones_created }}</span>
+                    </h5>
+                </div>
+                <div class="oh-card__body">
+                    {% if new_zones %}
+                        <ul class="oh-list">
+                            {% for zone in new_zones %}
+                                <li class="oh-list__item">
+                                    <a href="{% url 'skill-zone-cand-view' zone.id %}" class="oh-link">
+                                        {{ zone.title }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="oh-text--muted">{% trans "Aucune nouvelle zone créée" %}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Erreurs -->
+    {% if errors %}
+    <div class="oh-card mt-4">
+        <div class="oh-card__header">
+            <h5 class="oh-card__title">
+                {% trans "Erreurs rencontrées" %}
+                <span class="oh-badge oh-badge--danger ms-2">{{ errors|length }}</span>
+            </h5>
+        </div>
+        <div class="oh-card__body">
+            <div class="oh-sticky-table">
+                <div class="oh-sticky-table__table">
+                    <div class="oh-sticky-table__thead">
+                        <div class="oh-sticky-table__tr">
+                            <div class="oh-sticky-table__th">{% trans "CV" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Erreur" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Date/Heure" %}</div>
+                        </div>
+                    </div>
+                    <div class="oh-sticky-table__tbody">
+                        {% for error in errors %}
+                        <div class="oh-sticky-table__tr">
+                            <div class="oh-sticky-table__td">{{ error.cv }}</div>
+                            <div class="oh-sticky-table__td">{{ error.error }}</div>
+                            <div class="oh-sticky-table__td">{{ error.timestamp|date:"d/m/Y H:i:s" }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

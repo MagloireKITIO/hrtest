@@ -13,7 +13,7 @@ import recruitment.views.surveys
 from base.views import add_remove_dynamic_fields, object_duplicate
 from recruitment.forms import QuestionForm, RecruitmentCreationForm, StageCreationForm
 from recruitment.models import Candidate, Recruitment, RecruitmentSurvey, Stage
-from recruitment.views import views
+from recruitment.views import skillzone_import, skillzone_search, views
 from recruitment.views.actions import get_template
 
 
@@ -675,4 +675,25 @@ urlpatterns = [
     path('privacy-policy/delete/<int:policy_id>/', views.privacy_policy_delete, name='privacy-policy-delete'),
     path('privacy-policy/toggle-default/<int:policy_id>/', views.privacy_policy_toggle_default, name='privacy-policy-toggle-default'),
     path('get-privacy-policy/<int:recruitment_id>/', views.get_privacy_policy_content, name='get-privacy-policy-content'),
+
+    # NOUVELLES URLs pour l'import en masse
+    path("skill-zone/import/", skillzone_import.skillzone_bulk_import, name="skillzone-bulk-import"),
+    path("skill-zone/import/history/", skillzone_import.skillzone_import_history, name="skillzone-import-history"),
+    path("skill-zone/import/status/<int:import_id>/", skillzone_import.skillzone_import_status, name="skillzone-import-status"),
+    path("skill-zone/import/detail/<int:import_id>/", views.skillzone_import_detail, name="skillzone-import-detail"),
+
+    path("skill-zone/import/create-zone/", skillzone_import.create_skillzone_for_import, name="skillzone-create-for-import"),
+    
+    # NOUVELLES URLs pour la recherche intelligente
+    path("skill-zone/search/", skillzone_search.skillzone_smart_search, name="skillzone-search"),
+    path("skill-zone/search/autocomplete/", skillzone_search.skillzone_search_autocomplete, name="skillzone-search-autocomplete"),
+    
+    # API endpoints pour les fonctionnalités avancées
+    path("api/skill-zone/classify/<int:candidate_id>/", views.api_classify_candidate, name="api-classify-candidate"),
+    path("api/skill-zone/reclassify/<int:sz_cand_id>/", views.api_reclassify_candidate, name="api-reclassify-candidate"),
+    
+    path("api/skill-zone/stats/count/", views.api_skillzone_stats, {'sz_id': 0}, name="api-skillzone-stats-count"),
+    path("api/skill-zone/stats/all/", views.api_skillzone_stats, {'sz_id': 0}, name="api-skillzone-stats-all"),
+    path("api/skill-zone/stats/<int:sz_id>/", views.api_skillzone_stats, name="api-skillzone-stats"),   
+
 ]

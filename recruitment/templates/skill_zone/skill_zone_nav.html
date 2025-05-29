@@ -1,8 +1,12 @@
+<!-- recruitment/templates/skill_zone/skill_zone_nav.html - Version améliorée -->
 {% load i18n %}
-<section class="oh-main__topbar" x-data="{searchShow: false}">
+<section class="oh-main__topbar" x-data="{searchShow: false, searchType: 'keyword'}">
     <div class="oh-main__titlebar oh-main__titlebar--left">
         <h1 class="oh-main__titlebar-title fw-bold mb-0">
             {% trans "Skill Zone" %}
+            <span class="oh-badge oh-badge--info ms-2" id="totalCandidatesCount">
+                <!-- Compteur dynamique -->
+            </span>
         </h1>
 
         <a class="oh-main__titlebar-search-toggle" role="button" aria-label="Toggle Search"
@@ -12,133 +16,304 @@
     </div>
 
     <div class="oh-main__titlebar oh-main__titlebar--right">
-        <form hx-get='{% url "skill-zone-filter" %}' id="filterForm" hx-target='#skill_zone_container' class="d-flex">
-            <div class="oh-input-group oh-input__search-group"
+        <form hx-get='{% url "skillzone-search" %}' id="smartSearchForm" hx-target='#skill_zone_container' class="d-flex align-items-center">
+            <!-- Recherche intelligente améliorée -->
+            <div class="oh-input-group oh-input__search-group me-2"
                 :class="searchShow ? 'oh-input__search-group--show' : ''">
                 <ion-icon name="search-outline" class="oh-input-group__icon oh-input-group__icon--left"></ion-icon>
-                <input type="text" class="oh-input oh-input__icon" aria-label="Search Input"
-                    placeholder="{% trans 'Search' %}" name="search" hx-get="{% url 'skill-zone-filter' %}"
-                    onkeyup="$('.filterButton').click()"
+                <input 
+                    type="text" 
+                    class="oh-input oh-input__icon" 
+                    id="smartSearchInput"
+                    name="q" 
+                    placeholder="{% trans 'Recherche intelligente...' %}"
+                    autocomplete="off"
+                    data-autocomplete-url="{% url 'skillzone-search-autocomplete' %}"
                 />
+                <div id="searchAutocomplete" class="oh-autocomplete-dropdown"></div>
+            </div>
+            
+            <!-- Sélecteur de type de recherche -->
+            <div class="oh-input-group me-2" x-show="searchShow">
+                <select name="search_type" class="oh-select oh-select--small" x-model="searchType">
+                    <option value="keyword">{% trans "Mots-clés" %}</option>
+                    <option value="semantic">{% trans "Sémantique" %}</option>
+                    <option value="hybrid">{% trans "Hybride" %}</option>
+                </select>
             </div>
 
-            <div class="oh-main__titlebar-button-container">
-                <div class="oh-dropdown" x-data="{open: false}">
-                    <button class="oh-btn ml-2" @click="open = !open" onclick="event.preventDefault()">
-                        <ion-icon name="filter" class="mr-1"></ion-icon>{% trans "Filter" %}<div id="filterCount"></div>
-                    </button>
+            <!-- Filtres rapides -->
+            <div class="oh-btn-group me-2" x-show="searchShow">
+                <select name="professional_level" class="oh-select oh-select--small">
+                    <option value="">{% trans "Tous niveaux" %}</option>
+                    <option value="junior">{% trans "Junior" %}</option>
+                    <option value="intermediate">{% trans "Intermédiaire" %}</option>
+                    <option value="senior">{% trans "Senior" %}</option>
+                    <option value="expert">{% trans "Expert" %}</option>
+                </select>
+            </div>
 
-                    <div class="oh-dropdown__menu oh-dropdown__menu--right oh-dropdown__filter p-4" x-show="open" style="display: none" @click.outside="open = false">
-                        <div class="oh-dropdown__filter-body">
-                            <div class="oh-accordion">
-                                <div class="oh-accordion-header">{% trans "Candidate Filter" %}</div>
-                                <div class="oh-accordion-body">
-                                    <div class="row">
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Recruitment" %}</label>
-                                                {{f.form.candidate_id__recruitment_id}}
-                                            </div>
+            <button type="submit" class="oh-btn oh-btn--primary oh-btn--small me-3" x-show="searchShow">
+                <ion-icon name="search"></ion-icon>
+                {% trans "Rechercher" %}
+            </button>
+        </form>
+
+        <div class="oh-main__titlebar-button-container">
+            <!-- Bouton Import en masse -->
+            <a href="{% url 'skillzone-bulk-import' %}" class="oh-btn oh-btn--secondary me-2">
+                <ion-icon name="cloud-upload-outline" class="me-1"></ion-icon>
+                {% trans "Import CV" %}
+            </a>
+
+            <!-- Dropdown Filtres existant -->
+            <div class="oh-dropdown" x-data="{open: false}">
+                <button class="oh-btn ml-2" @click="open = !open" onclick="event.preventDefault()">
+                    <ion-icon name="filter" class="mr-1"></ion-icon>{% trans "Filter" %}<div id="filterCount"></div>
+                </button>
+
+                <div class="oh-dropdown__menu oh-dropdown__menu--right oh-dropdown__filter p-4" x-show="open" style="display: none" @click.outside="open = false">
+                    <div class="oh-dropdown__filter-body">
+                        <div class="oh-accordion">
+                            <div class="oh-accordion-header">{% trans "Filtres avancés" %}</div>
+                            <div class="oh-accordion-body">
+                                <div class="row">
+                                    <!-- Filtres existants -->
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Recruitment" %}</label>
+                                            {{f.form.candidate_id__recruitment_id}}
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Candidates" %}</label>
-                                                {{f.form.candidate_id}}
-                                            </div>
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Job Position" %}</label>
+                                            {{f.form.candidate_id__job_position_id}}
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Job Position" %}</label>
-                                                {{f.form.candidate_id__job_position_id}}
-                                            </div>
+                                    <!-- Nouveaux filtres pour l'IA -->
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Source" %}</label>
+                                            <select name="source_tag" class="oh-select">
+                                                <option value="">{% trans "Toutes sources" %}</option>
+                                                <option value="manual">{% trans "Manuelle" %}</option>
+                                                <option value="application">{% trans "Candidature" %}</option>
+                                                <option value="import">{% trans "Import" %}</option>
+                                                <option value="ai_suggestion">{% trans "Suggestion IA" %}</option>
+                                            </select>
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Joining From" %}</label>
-                                                {{f.form.scheduled_from}}
-                                            </div>
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Classification" %}</label>
+                                            <select name="auto_classified" class="oh-select">
+                                                <option value="">{% trans "Toutes" %}</option>
+                                                <option value="true">{% trans "Automatique" %}</option>
+                                                <option value="false">{% trans "Manuelle" %}</option>
+                                            </select>
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Joining Till" %}</label>
-                                                {{f.form.scheduled_till}}
-                                            </div>
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Score confiance min." %}</label>
+                                            <input type="number" name="min_confidence" class="oh-input" 
+                                                   min="0" max="1" step="0.1" value="0.5">
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Probation From" %}</label>
-                                                {{f.form.probation_end_from}}
-                                            </div>
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Zones auto-générées" %}</label>
+                                            <select name="auto_generated" class="oh-select">
+                                                <option value="">{% trans "Toutes zones" %}</option>
+                                                <option value="true">{% trans "Auto-générées" %}</option>
+                                                <option value="false">{% trans "Manuelles" %}</option>
+                                            </select>
                                         </div>
+                                    </div>
 
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Probation Till" %}</label>
-                                                {{f.form.probation_end_till}}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Portal Sent" %}</label>
-                                                {{f.form.portal_sent}}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Joining Set" %}</label>
-                                                {{f.form.joining_set}}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-sm-12 col-md-12 col-lg-6 mb-2">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Reject Reason" %}</label>
-                                                {{f.form.candidate_id__rejected_candidate__reject_reason_id}}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-sm-12 col-md-12 col-lg-6 mb-2">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Offer Status" %}</label>
-                                                {{f.form.candidate_id__offer_letter_status}}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-sm-12 col-md-12 col-lg-6">
-                                            <div class="oh-input-group">
-                                                <label class="oh-label">{% trans "Is Active" %}</label>
-                                                {{f.form.is_active}}
-                                            </div>
+                                    <div class="col-sm-12 col-md-12 col-lg-6">
+                                        <div class="oh-input-group">
+                                            <label class="oh-label">{% trans "Is Active" %}</label>
+                                            {{f.form.is_active}}
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="oh-dropdown__filter-footer">
-                                <button class="oh-btn oh-btn--secondary oh-btn--small w-100 filterButton" type="submit">
-                                    {% trans "Filter" %}
-                                </button>
-                            </div>
+                        <div class="oh-dropdown__filter-footer">
+                            <button class="oh-btn oh-btn--secondary oh-btn--small w-100 filterButton" type="submit">
+                                {% trans "Appliquer les filtres" %}
+                            </button>
                         </div>
                     </div>
                 </div>
-                <div class="oh-btn-group ml-2"></div>
             </div>
-        </form>
 
-        <div class="oh-btn-group ml-2">
-            <a class="oh-btn oh-btn--secondary oh-btn--shadow" data-toggle="oh-modal-toggle" data-target="#createModal"
+            <!-- Statistiques rapides -->
+            <div class="oh-dropdown ms-2" x-data="{open: false}">
+                <button class="oh-btn oh-btn--light" @click="open = !open">
+                    <ion-icon name="analytics-outline"></ion-icon>
+                </button>
+                <div class="oh-dropdown__menu oh-dropdown__menu--right" x-show="open" @click.outside="open = false" style="min-width: 300px;">
+                    <div class="p-3">
+                        <h6 class="mb-3">{% trans "Statistiques SkillZone" %}</h6>
+                        <div id="skillzoneStats">
+                            <!-- Chargé dynamiquement -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton Créer existant -->
+            <a class="oh-btn oh-btn--secondary oh-btn--shadow ms-2" data-toggle="oh-modal-toggle" data-target="#createModal"
                 hx-get="{% url 'skill-zone-create' %}" hx-target="#createTarget">
                 <ion-icon name="add-outline" class="me-1"></ion-icon>
-                {% trans "Create" %}
+                {% trans "Créer Zone" %}
             </a>
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Autocomplétion de recherche
+    const searchInput = document.getElementById('smartSearchInput');
+    const autocompleteDiv = document.getElementById('searchAutocomplete');
+    let autocompleteTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(autocompleteTimeout);
+        const query = this.value;
+        
+        if (query.length < 2) {
+            autocompleteDiv.innerHTML = '';
+            autocompleteDiv.style.display = 'none';
+            return;
+        }
+        
+        autocompleteTimeout = setTimeout(() => {
+            fetch(`${this.dataset.autocompleteUrl}?q=${encodeURIComponent(query)}`, {
+                headers: {'HX-Request': 'true'}
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.suggestions && data.suggestions.length > 0) {
+                    autocompleteDiv.innerHTML = data.suggestions.map(suggestion => 
+                        `<div class="oh-autocomplete-item" onclick="selectSuggestion('${suggestion}')">
+                            <ion-icon name="search-outline" class="me-2"></ion-icon>
+                            ${suggestion}
+                        </div>`
+                    ).join('');
+                    autocompleteDiv.style.display = 'block';
+                } else {
+                    autocompleteDiv.style.display = 'none';
+                }
+            });
+        }, 300);
+    });
+    
+    // Cacher l'autocomplétion lors du clic à l'extérieur
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !autocompleteDiv.contains(e.target)) {
+            autocompleteDiv.style.display = 'none';
+        }
+    });
+    
+    // Charger les statistiques
+    loadSkillzoneStats();
+    
+    // Mettre à jour le compteur total
+    updateTotalCount();
+});
+
+function selectSuggestion(suggestion) {
+    document.getElementById('smartSearchInput').value = suggestion;
+    document.getElementById('searchAutocomplete').style.display = 'none';
+    document.getElementById('smartSearchForm').dispatchEvent(new Event('submit'));
+}
+
+function loadSkillzoneStats() {
+    fetch("{% url 'api-skillzone-stats' 0 %}".replace('0', 'all'), {
+        headers: {'HX-Request': 'true'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        const statsDiv = document.getElementById('skillzoneStats');
+        statsDiv.innerHTML = `
+            <div class="oh-stats-item mb-2">
+                <span class="oh-text--muted">{% trans "Total zones" %}</span>
+                <span class="oh-badge oh-badge--primary float-end">${data.total_zones}</span>
+            </div>
+            <div class="oh-stats-item mb-2">
+                <span class="oh-text--muted">{% trans "Candidats classifiés" %}</span>
+                <span class="oh-badge oh-badge--success float-end">${data.total_candidates}</span>
+            </div>
+            <div class="oh-stats-item mb-2">
+                <span class="oh-text--muted">{% trans "Classifications auto" %}</span>
+                <span class="oh-badge oh-badge--info float-end">${data.auto_classified}</span>
+            </div>
+            <div class="oh-stats-item">
+                <span class="oh-text--muted">{% trans "Score moyen" %}</span>
+                <span class="oh-badge oh-badge--warning float-end">${data.avg_confidence}%</span>
+            </div>
+        `;
+    });
+}
+
+function updateTotalCount() {
+    // Mise à jour du compteur total de candidats
+    fetch("{% url 'api-skillzone-stats' 0 %}".replace('0', 'count'), {
+        headers: {'HX-Request': 'true'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('totalCandidatesCount').textContent = data.total_candidates + ' candidats';
+    });
+}
+</script>
+
+<style>
+.oh-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.oh-autocomplete-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.oh-autocomplete-item:hover {
+    background-color: #f5f5f5;
+}
+
+.oh-stats-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.oh-stats-item:last-child {
+    border-bottom: none;
+}
+</style>

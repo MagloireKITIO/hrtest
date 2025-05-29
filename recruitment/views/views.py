@@ -37,7 +37,7 @@ from django.core import serializers
 from django.core.cache import cache as CACHE
 from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
-from django.db.models import ProtectedError, Q
+from django.db.models import ProtectedError, Q, Count, F, Value,Avg
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -63,6 +63,8 @@ import os
 from django.template import Template, Context
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_datetime
+
+from recruitment.utils.skillzone_classifier import get_skillzone_classifier
 from ..utils.cv_analysis import cv_analysis_manager,_event_loop
 from horilla import settings
 from recruitment.utils.google_calendar import handle_oauth2callback
@@ -129,6 +131,7 @@ from recruitment.models import (
     Skill,
     SkillZone,
     SkillZoneCandidate,
+    SkillZoneImportHistory,
     Stage,
     StageFiles,
     StageNote,
@@ -4835,3 +4838,279 @@ def get_privacy_policy_content(request, recruitment_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+@login_required
+@permission_required("recruitment.add_skillzonecandidate")
+@require_http_methods(["POST"])
+def api_classify_candidate(request, candidate_id):
+    """
+    API pour classifier manuellement un candidat dans les zones de compétences
+    """
+    try:
+        candidate = Candidate.objects.get(id=candidate_id)
+        
+        # Lancer la classification asynchrone
+        classifier = get_skillzone_classifier()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        result = loop.run_until_complete(
+            classifier.classify_candidate(candidate, source_tag='manual')
+        )
+        loop.close()
+        
+        if "error" in result:
+            return JsonResponse({
+                'status': 'error',
+                'message': result['error']
+            }, status=500)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': _("Candidat classifié avec succès"),
+            'classifications': result.get('classifications', []),
+            'new_zone_created': result.get('new_zone_created'),
+            'extracted_skills': result.get('extracted_skills', [])
+        })
+        
+    except Candidate.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': _("Candidat introuvable")
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Erreur classification API: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@permission_required("recruitment.change_skillzonecandidate")
+@require_http_methods(["POST"])
+def api_reclassify_candidate(request, sz_cand_id):
+    """
+    API pour reclassifier un candidat déjà dans une zone
+    """
+    try:
+        sz_candidate = SkillZoneCandidate.objects.get(id=sz_cand_id)
+        candidate = sz_candidate.candidate_id
+        
+        # Supprimer l'ancienne classification
+        sz_candidate.delete()
+        
+        # Relancer la classification
+        classifier = get_skillzone_classifier()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        result = loop.run_until_complete(
+            classifier.classify_candidate(candidate, source_tag='manual')
+        )
+        loop.close()
+        
+        if "error" in result:
+            return JsonResponse({
+                'status': 'error',
+                'message': result['error']
+            }, status=500)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': _("Candidat reclassifié avec succès"),
+            'classifications': result.get('classifications', [])
+        })
+        
+    except SkillZoneCandidate.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': _("Classification introuvable")
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Erreur reclassification API: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@permission_required("recruitment.view_skillzone")
+def api_skillzone_stats(request, sz_id):
+    """
+    API pour obtenir les statistiques d'une zone ou globales
+    """
+    try:
+        company_id = request.user.employee_get.company_id
+        
+        if sz_id == 0 or request.path.endswith('/all/'):
+            # Statistiques globales
+            zones = SkillZone.objects.filter(
+                company_id=company_id,
+                is_active=True
+            )
+            
+            total_candidates = SkillZoneCandidate.objects.filter(
+                skill_zone_id__company_id=company_id,
+                is_active=True
+            ).count()
+            
+            auto_classified = SkillZoneCandidate.objects.filter(
+                skill_zone_id__company_id=company_id,
+                is_active=True,
+                auto_classified=True
+            ).count()
+            
+            avg_confidence = SkillZoneCandidate.objects.filter(
+                skill_zone_id__company_id=company_id,
+                is_active=True,
+                confidence_score__isnull=False
+            ).aggregate(avg=Avg('confidence_score'))['avg']
+            
+            stats = {
+                'total_zones': zones.count(),
+                'auto_generated_zones': zones.filter(auto_generated=True).count(),
+                'total_candidates': total_candidates,
+                'auto_classified': auto_classified,
+                'manual_classified': total_candidates - auto_classified,
+                'avg_confidence': round(avg_confidence * 100, 1) if avg_confidence else 0,
+                'zones_breakdown': []
+            }
+            
+            # Top 5 zones par nombre de candidats
+            top_zones = zones.annotate(
+                candidate_count=Count('skillzonecandidate_set', 
+                                    filter=Q(skillzonecandidate_set__is_active=True))
+            ).order_by('-candidate_count')[:5]
+            
+            for zone in top_zones:
+                stats['zones_breakdown'].append({
+                    'id': zone.id,
+                    'name': zone.title,
+                    'candidate_count': zone.candidate_count,
+                    'is_auto': zone.auto_generated
+                })
+            
+        elif request.path.endswith('/count/'):
+            # Juste le compteur total
+            total_candidates = SkillZoneCandidate.objects.filter(
+                skill_zone_id__company_id=company_id,
+                is_active=True
+            ).count()
+            
+            return JsonResponse({'total_candidates': total_candidates})
+            
+        else:
+            # Statistiques d'une zone spécifique
+            zone = SkillZone.objects.get(id=sz_id, company_id=company_id)
+            
+            candidates = SkillZoneCandidate.objects.filter(
+                skill_zone_id=zone,
+                is_active=True
+            )
+            
+            stats = {
+                'zone_id': zone.id,
+                'zone_name': zone.title,
+                'is_auto_generated': zone.auto_generated,
+                'total_candidates': candidates.count(),
+                'auto_classified': candidates.filter(auto_classified=True).count(),
+                'avg_confidence': 0,
+                'confidence_distribution': {
+                    'high': 0,    # > 0.8
+                    'medium': 0,  # 0.6 - 0.8
+                    'low': 0      # < 0.6
+                },
+                'sources': {},
+                'recent_additions': []
+            }
+            
+            # Score de confiance moyen
+            avg_conf = candidates.filter(
+                confidence_score__isnull=False
+            ).aggregate(avg=Avg('confidence_score'))['avg']
+            
+            if avg_conf:
+                stats['avg_confidence'] = round(avg_conf * 100, 1)
+            
+            # Distribution des scores
+            stats['confidence_distribution']['high'] = candidates.filter(
+                confidence_score__gt=0.8
+            ).count()
+            stats['confidence_distribution']['medium'] = candidates.filter(
+                confidence_score__gte=0.6,
+                confidence_score__lte=0.8
+            ).count()
+            stats['confidence_distribution']['low'] = candidates.filter(
+                confidence_score__lt=0.6
+            ).count()
+            
+            # Sources des candidats
+            for source, label in SkillZoneCandidate.SOURCE_CHOICES:
+                count = candidates.filter(source_tag=source).count()
+                if count > 0:
+                    stats['sources'][label] = count
+            
+            # 5 derniers ajouts
+            recent = candidates.order_by('-added_on')[:5]
+            for sz_cand in recent:
+                stats['recent_additions'].append({
+                    'candidate_name': sz_cand.candidate_id.name,
+                    'added_on': sz_cand.added_on.strftime('%d/%m/%Y'),
+                    'confidence': sz_cand.get_confidence_percentage(),
+                    'is_auto': sz_cand.auto_classified
+                })
+        
+        return JsonResponse(stats)
+        
+    except SkillZone.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': _("Zone introuvable")
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Erreur stats API: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
+@login_required
+@permission_required("recruitment.view_skillzoneimporthistory")
+def skillzone_import_detail(request, import_id):
+    """
+    Vue détaillée d'un import avec les erreurs
+    """
+    try:
+        import_history = SkillZoneImportHistory.objects.get(
+            id=import_id,
+            company_id=request.user.employee_get.company_id
+        )
+        
+        # Récupérer les nouvelles zones créées
+        new_zones = []
+        if import_history.new_zones_created > 0:
+            # Récupérer les zones créées pendant cet import
+            # (basé sur la date de création proche)
+            from django.utils import timezone
+            import_time = import_history.import_date
+            time_window = timezone.timedelta(hours=1)
+            
+            new_zones = SkillZone.objects.filter(
+                company_id=import_history.company_id,
+                auto_generated=True,
+                created_at__gte=import_time - time_window,
+                created_at__lte=import_time + time_window
+            ).order_by('-created_at')[:import_history.new_zones_created]
+        
+        return render(request, 'skill_zone/import_detail.html', {
+            'import': import_history,
+            'new_zones': new_zones,
+            'errors': import_history.error_log
+        })
+        
+    except SkillZoneImportHistory.DoesNotExist:
+        messages.error(request, _("Import introuvable"))
+        return redirect('skillzone-import-history')

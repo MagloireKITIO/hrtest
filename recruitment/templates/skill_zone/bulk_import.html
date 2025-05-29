@@ -1,0 +1,230 @@
+<!-- recruitment/templates/skill_zone/bulk_import.html -->
+{% extends 'index.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block content %}
+<div class="oh-wrapper">
+    <section class="oh-main__topbar">
+        <div class="oh-main__titlebar oh-main__titlebar--left">
+            <h1 class="oh-main__titlebar-title fw-bold mb-0">
+                {% trans "Import en masse de CV" %}
+            </h1>
+        </div>
+    </section>
+
+    <div class="oh-card mt-4">
+        <div class="oh-card__header">
+            <h3 class="oh-card__title">{% trans "Importer et classifier des CV" %}</h3>
+            <p class="oh-text--muted">
+                {% trans "Importez plusieurs CV en PDF. L'IA analysera et classifiera automatiquement chaque CV dans les zones de compétences appropriées." %}
+            </p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="bulkImportForm" class="oh-card__body">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="oh-input-group">
+                        <label class="oh-label" for="{{ form.cv_files.id_for_label }}">
+                            {{ form.cv_files.label }}
+                            <span class="oh-text--danger">*</span>
+                        </label>
+                        {{ form.cv_files }}
+                        {% if form.cv_files.help_text %}
+                            <small class="oh-text--muted">{{ form.cv_files.help_text }}</small>
+                        {% endif %}
+                        <div id="fileList" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="oh-input-group">
+                        <label class="oh-label" for="{{ form.min_confidence.id_for_label }}">
+                            {{ form.min_confidence.label }}
+                        </label>
+                        {{ form.min_confidence }}
+                        {% if form.min_confidence.help_text %}
+                            <small class="oh-text--muted">{{ form.min_confidence.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="oh-checkbox-group">
+                        {{ form.auto_create_zones }}
+                        <label class="oh-checkbox-label" for="{{ form.auto_create_zones.id_for_label }}">
+                            {{ form.auto_create_zones.label }}
+                            {% if form.auto_create_zones.help_text %}
+                                <small class="oh-text--muted d-block">{{ form.auto_create_zones.help_text }}</small>
+                            {% endif %}
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="oh-card__footer mt-4">
+                <button type="submit" class="oh-btn oh-btn--primary" id="submitBtn">
+                    <ion-icon name="cloud-upload-outline" class="me-2"></ion-icon>
+                    {% trans "Lancer l'import" %}
+                </button>
+                <a href="{% url 'skill-zone-view' %}" class="oh-btn oh-btn--light ms-2">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Historique des imports récents -->
+    {% if recent_imports %}
+    <div class="oh-card mt-4">
+        <div class="oh-card__header">
+            <h4 class="oh-card__title">{% trans "Imports récents" %}</h4>
+        </div>
+        <div class="oh-card__body">
+            <div class="oh-sticky-table">
+                <div class="oh-sticky-table__table">
+                    <div class="oh-sticky-table__thead">
+                        <div class="oh-sticky-table__tr">
+                            <div class="oh-sticky-table__th">{% trans "Date" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Statut" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Progression" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Résultats" %}</div>
+                            <div class="oh-sticky-table__th">{% trans "Actions" %}</div>
+                        </div>
+                    </div>
+                    <div class="oh-sticky-table__tbody">
+                        {% for import in recent_imports %}
+                        <div class="oh-sticky-table__tr" data-import-id="{{ import.id }}">
+                            <div class="oh-sticky-table__td">
+                                {{ import.import_date|date:"d/m/Y H:i" }}
+                            </div>
+                            <div class="oh-sticky-table__td">
+                                <span class="oh-badge oh-badge--{% if import.status == 'completed' %}success{% elif import.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                    {{ import.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="oh-sticky-table__td">
+                                <div class="oh-progress">
+                                    <div class="oh-progress__bar" style="width: {{ import.get_progress_percentage }}%"></div>
+                                </div>
+                                <small>{{ import.processed_cvs }}/{{ import.total_cvs }}</small>
+                            </div>
+                            <div class="oh-sticky-table__td">
+                                <small>
+                                    ✓ {{ import.successful_classifications }} 
+                                    ✗ {{ import.failed_classifications }}
+                                    {% if import.new_zones_created > 0 %}
+                                        <br>🆕 {{ import.new_zones_created }} zones
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="oh-sticky-table__td">
+                                <a href="{% url 'skillzone-import-detail' import.id %}" 
+                                   class="oh-btn oh-btn--light oh-btn--small">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('input[type="file"][multiple]');
+    const fileList = document.getElementById('fileList');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Afficher la liste des fichiers sélectionnés
+    fileInput.addEventListener('change', function(e) {
+        fileList.innerHTML = '';
+        const files = Array.from(e.target.files);
+        
+        if (files.length > 0) {
+            const listEl = document.createElement('ul');
+            listEl.className = 'oh-list';
+            
+            files.forEach(file => {
+                const li = document.createElement('li');
+                li.className = 'oh-list__item d-flex justify-content-between align-items-center';
+                li.innerHTML = `
+                    <span>
+                        <ion-icon name="document-outline" class="me-2"></ion-icon>
+                        ${file.name}
+                    </span>
+                    <small class="oh-text--muted">${(file.size / 1024).toFixed(2)} KB</small>
+                `;
+                listEl.appendChild(li);
+            });
+            
+            fileList.appendChild(listEl);
+            fileList.innerHTML += `<p class="oh-text--muted mt-2">
+                <strong>${files.length}</strong> fichier(s) sélectionné(s)
+            </p>`;
+        }
+    });
+    
+    // Gestion de la soumission du formulaire
+    document.getElementById('bulkImportForm').addEventListener('submit', function(e) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {% trans "Import en cours..." %}
+        `;
+    });
+    
+    // Actualisation automatique du statut des imports en cours
+    function updateImportStatus() {
+        document.querySelectorAll('[data-import-id]').forEach(row => {
+            const importId = row.dataset.importId;
+            const statusBadge = row.querySelector('.oh-badge');
+            
+            if (statusBadge && statusBadge.textContent.includes('In Progress')) {
+                fetch(`{% url 'skillzone-import-status' 0 %}`.replace('0', importId), {
+                    headers: {
+                        'HX-Request': 'true'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        location.reload();
+                    } else {
+                        // Mettre à jour la barre de progression
+                        const progressBar = row.querySelector('.oh-progress__bar');
+                        if (progressBar) {
+                            progressBar.style.width = data.progress + '%';
+                        }
+                        // Mettre à jour les compteurs
+                        const counters = row.querySelectorAll('.oh-sticky-table__td')[3];
+                        if (counters) {
+                            counters.innerHTML = `
+                                <small>
+                                    ✓ ${data.successful} 
+                                    ✗ ${data.failed}
+                                    ${data.new_zones > 0 ? `<br>🆕 ${data.new_zones} zones` : ''}
+                                </small>
+                            `;
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    // Vérifier le statut toutes les 3 secondes
+    setInterval(updateImportStatus, 3000);
+});
+</script>
+{% endblock %}">

@@ -1,6 +1,4 @@
-"""
-apps.py
-"""
+# recruitment/apps.py
 
 from django.apps import AppConfig
 
@@ -29,4 +27,17 @@ class RecruitmentConfig(AppConfig):
         urlpatterns.append(
             path("recruitment/", include("recruitment.urls")),
         )
+        
+        # Initialiser le SkillZone Classifier
+        try:
+            from recruitment.utils.skillzone_classifier import get_skillzone_classifier
+            import logging
+            logger = logging.getLogger(__name__)
+            get_skillzone_classifier()
+            logger.info("SkillZone Classifier initialisé")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Impossible d'initialiser SkillZone Classifier: {str(e)}")
+        
         super().ready()
