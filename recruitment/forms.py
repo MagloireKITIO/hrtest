@@ -1889,15 +1889,7 @@ class SkillZoneBulkImportForm(forms.Form):
             'class': 'oh-input'
         })
     )
-    
-    default_recruitment = forms.ModelChoiceField(
-        queryset=Recruitment.objects.filter(closed=False, is_active=True),
-        required=False,
-        label=_("Recrutement par défaut"),
-        help_text=_("Recrutement à utiliser pour les candidats importés"),
-        widget=forms.Select(attrs={'class': 'oh-select'})
-    )
-    
+        
     auto_create_zones = forms.BooleanField(
         required=False,
         initial=True,

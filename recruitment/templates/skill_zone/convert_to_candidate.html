@@ -1,0 +1,42 @@
+<!-- recruitment/templates/skill_zone/convert_to_candidate.html -->
+{% extends 'index.html' %}
+{% load i18n %}
+
+{% block content %}
+<div class="oh-wrapper">
+    <div class="oh-card">
+        <div class="oh-card__header">
+            <h3 class="oh-card__title">{% trans "Convertir en candidat" %}</h3>
+        </div>
+        
+        <form method="post" class="oh-card__body">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <p><strong>{% trans "CV:" %}</strong> {{ sz_candidate.classification_details.original_filename }}</p>
+                <p><strong>{% trans "Zone:" %}</strong> {{ sz_candidate.skill_zone_id.title }}</p>
+                <p><strong>{% trans "Score:" %}</strong> {{ sz_candidate.get_confidence_percentage }}%</p>
+            </div>
+            
+            <div class="oh-input-group">
+                <label class="oh-label">{% trans "Sélectionner un recrutement" %} <span class="oh-text--danger">*</span></label>
+                <select name="recruitment_id" class="oh-select" required>
+                    <option value="">{% trans "-- Choisir --" %}</option>
+                    {% for recruitment in recruitments %}
+                        <option value="{{ recruitment.id }}">{{ recruitment.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="oh-card__footer mt-4">
+                <button type="submit" class="oh-btn oh-btn--primary">
+                    {% trans "Convertir en candidat" %}
+                </button>
+                <a href="{% url 'skill-zone-view' %}" class="oh-btn oh-btn--light ms-2">
+                    {% trans "Annuler" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
