@@ -183,30 +183,49 @@ def classify_cv_to_skillzone(cv_data, company_id, form_data):
         if len(cv_text) < 50:
             return {"success": False, "error": "Texte PDF insuffisant"}
         
-        # Obtenir la configuration IA directement avec l'ID de la company
+        # Obtenir la configuration IA
         from recruitment.models import AIConfiguration, SkillZone
         
-        # Méthode alternative pour obtenir la config
-        ai_config = AIConfiguration.objects.filter(
-            company_id_id=company_id,
-            is_active=True
-        ).first()
+        # Stratégie pour obtenir la config :
+        # 1. Si company_id existe, chercher une config associée à cette company
+        # 2. Sinon, chercher la config par défaut
+        # 3. Sinon, prendre la première config active
         
-        # Si pas de config spécifique à la company, chercher une config globale
+        ai_config = None
+        
+        if company_id:
+            # Chercher une config associée à cette company (relation M2M)
+            ai_config = AIConfiguration.objects.filter(
+                companies__id=company_id,
+                is_active=True
+            ).first()
+        
+        # Si pas trouvé, chercher la config par défaut
         if not ai_config:
             ai_config = AIConfiguration.objects.filter(
-                company_id__isnull=True,
+                is_default=True,
+                is_active=True
+            ).first()
+        
+        # Si toujours pas trouvé, prendre la première config active
+        if not ai_config:
+            ai_config = AIConfiguration.objects.filter(
                 is_active=True
             ).first()
         
         if not ai_config:
-            return {"success": False, "error": "Pas de configuration IA trouvée"}
+            return {"success": False, "error": "Aucune configuration IA disponible. Veuillez créer une configuration dans l'administration."}
         
         # Obtenir les zones disponibles
-        available_zones = SkillZone.objects.filter(
-            company_id_id=company_id,
-            is_active=True
-        )
+        zones_query = SkillZone.objects.filter(is_active=True)
+        
+        # Si company_id est spécifié, filtrer par company
+        if company_id:
+            zones_query = zones_query.filter(company_id=company_id)
+        
+        available_zones = list(zones_query)
+        
+        logger.info(f"Zones disponibles: {len(available_zones)}")
         
         # Classifier avec l'IA
         classification_result = async_to_sync(classifier._call_ai_for_classification)(
@@ -223,8 +242,10 @@ def classify_cv_to_skillzone(cv_data, company_id, form_data):
             if match["confidence"] >= ai_config.min_confidence_for_auto_classification:
                 # Trouver la zone correspondante
                 zone = None
+                zone_identifier = match.get("zone_id") or match.get("zone")
+                
                 for z in available_zones:
-                    if str(z.id) == str(match.get("zone_id")) or z.title == match.get("zone_id"):
+                    if str(z.id) == str(zone_identifier) or z.title.lower() == str(zone_identifier).lower():
                         zone = z
                         break
                 
@@ -249,20 +270,26 @@ def classify_cv_to_skillzone(cv_data, company_id, form_data):
                         }
                     )
                     success = True
+                    logger.info(f"CV classifié dans la zone: {zone.title}")
         
         # Si aucune zone ne correspond et auto-création activée
         if not success and classification_result.get("suggested_new_zone") and form_data.get("auto_create_zones"):
             new_zone_data = classification_result["suggested_new_zone"]
             
             # Créer la nouvelle zone
-            new_zone = SkillZone.objects.create(
-                title=new_zone_data["name"],
-                description=new_zone_data["description"],
-                company_id_id=company_id,
-                auto_generated=True,
-                keywords=new_zone_data.get("keywords", []),
-                typical_skills=new_zone_data.get("typical_skills", [])
-            )
+            new_zone_kwargs = {
+                "title": new_zone_data["name"],
+                "description": new_zone_data["description"],
+                "auto_generated": True,
+                "keywords": new_zone_data.get("keywords", []),
+                "typical_skills": new_zone_data.get("typical_skills", [])
+            }
+            
+            # Ajouter company_id seulement si elle existe
+            if company_id:
+                new_zone_kwargs["company_id_id"] = company_id
+            
+            new_zone = SkillZone.objects.create(**new_zone_kwargs)
             
             # Ajouter le CV à cette nouvelle zone
             SkillZoneCandidate.objects.create(
@@ -281,6 +308,8 @@ def classify_cv_to_skillzone(cv_data, company_id, form_data):
                 }
             )
             
+            logger.info(f"Nouvelle zone créée: {new_zone.title}")
+            
             return {
                 "success": True,
                 "new_zone_created": True,
@@ -290,8 +319,10 @@ def classify_cv_to_skillzone(cv_data, company_id, form_data):
         return {"success": success}
         
     except Exception as e:
-        logger.error(f"Erreur classification CV: {str(e)}")
-        return {"success": False, "error": str(e)}
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Erreur classification CV: {str(e)}\nDétails:\n{error_details}")
+        return {"success": False, "error": str(e) if str(e) else error_details}
 
 
 @login_required
