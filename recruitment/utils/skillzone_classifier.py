@@ -101,42 +101,207 @@ class SkillZoneClassifier:
             logger.error(f"[SKILLZONE] Erreur classification candidat {candidate.id}: {str(e)}")
             return {"error": str(e)}
     
-    async def _call_ai_for_classification(self, cv_text: str, prompt: str, ai_config) -> Dict:
-        """Appelle l'IA pour classifier le CV"""
+    async def _call_ai_for_classification(self, cv_text: str, prompt: str, ai_config) -> dict:
+        """Appelle l'API Together AI pour classifier le CV avec gestion améliorée des erreurs"""
         try:
             from together import Together
             import os
+            import re
+            import json
             
             os.environ['TOGETHER_API_KEY'] = ai_config.api_key
             client = Together()
             
             logger.info("[SKILLZONE] Appel API Together pour classification")
             
+            # Limiter la taille du CV pour éviter les dépassements de tokens
+            cv_text_limited = cv_text[:4000]
+            
             response = client.chat.completions.create(
                 model=ai_config.model_name,
                 messages=[
                     {"role": "system", "content": prompt},
-                    {"role": "user", "content": f"Analysez ce CV:\n\n{cv_text[:4000]}"}
+                    {"role": "user", "content": f"Analysez ce CV:\n\n{cv_text_limited}"}
                 ],
                 max_tokens=ai_config.max_tokens,
                 temperature=0.3  # Plus déterministe pour la classification
             )
             
             raw_response = response.choices[0].message.content.strip()
+            logger.info("[SKILLZONE] Réponse reçue de l'API Together")
             
-            # Parser la réponse JSON
-            json_start = raw_response.find('{')
-            json_end = raw_response.rfind('}') + 1
+            # Tenter d'extraire le JSON en utilisant des expressions régulières pour être plus robuste
+            json_match = re.search(r'({[\s\S]*})', raw_response)
             
-            if json_start >= 0 and json_end > json_start:
-                json_str = raw_response[json_start:json_end]
-                return json.loads(json_str)
-            else:
-                raise ValueError("Réponse JSON invalide de l'IA")
+            if json_match:
+                json_str = json_match.group(1)
                 
+                # Essayer plusieurs méthodes pour corriger et parser le JSON
+                try:
+                    # 1. Tenter de parser directement
+                    return json.loads(json_str)
+                except json.JSONDecodeError as e1:
+                    logger.warning(f"Première tentative de parsing JSON échouée: {str(e1)}")
+                    
+                    try:
+                        # 2. Essayer de corriger les problèmes courants dans le JSON
+                        corrected_json = self._fix_json_structure(json_str)
+                        return json.loads(corrected_json)
+                    except json.JSONDecodeError as e2:
+                        logger.error(f"Échec du parsing JSON après correction: {str(e2)}")
+                        
+                        # 3. Tenter une approche plus robuste avec un JSON minimal mais valide
+                        return self._extract_minimal_json(json_str, raw_response)
+            else:
+                logger.error("Aucun JSON trouvé dans la réponse")
+                # Créer un JSON minimal avec suggestion de zone basée sur le texte
+                return self._create_fallback_json(raw_response, cv_text)
+                    
         except Exception as e:
             logger.error(f"[SKILLZONE] Erreur appel IA: {str(e)}")
-            raise
+            # Retourner une structure minimale mais valide
+            return {
+                "matched_zones": [],
+                "suggested_new_zone": {
+                    "name": "Zone suggérée par défaut",
+                    "description": "Créée suite à une erreur d'analyse",
+                    "keywords": [],
+                    "typical_skills": []
+                },
+                "error": str(e)
+            }
+
+    def _fix_json_structure(self, json_str):
+        """Tente de corriger les problèmes courants dans les structures JSON"""
+        import re
+        
+        # Corriger les accolades non fermées
+        open_braces = json_str.count('{')
+        close_braces = json_str.count('}')
+        if open_braces > close_braces:
+            json_str += '}' * (open_braces - close_braces)
+        
+        # Corriger les listes de compétences dupliquées (problème observé)
+        # Regex pour trouver des structures comme "typical_skills": [...], "typical_skills": [...]
+        duplicate_pattern = r'("typical_skills"\s*:\s*\[[^\]]*\]),\s*("typical_skills"\s*:)'
+        json_str = re.sub(duplicate_pattern, r'\1,', json_str)
+        
+        # Corriger les virgules superflues à la fin des objets
+        json_str = re.sub(r',\s*}', '}', json_str)
+        
+        # Remplacer les guillemets Unicode par des guillemets standards
+        json_str = json_str.replace('\u201c', '"').replace('\u201d', '"')
+        
+        return json_str
+
+    def _extract_minimal_json(self, json_str, raw_response):
+        """Extrait les informations minimales nécessaires même d'un JSON corrompu"""
+        import re
+        
+        result = {
+            "matched_zones": [],
+            "suggested_new_zone": None
+        }
+        
+        # Extraire les zones correspondantes (même partiellement)
+        zones_match = re.search(r'"matched_zones"\s*:\s*\[(.*?)\]', json_str, re.DOTALL)
+        if zones_match:
+            zones_text = zones_match.group(1)
+            # Extraire chaque zone individuellement
+            zone_pattern = r'{(.*?)}'
+            zone_matches = re.finditer(zone_pattern, zones_text, re.DOTALL)
+            
+            for zone_match in zone_matches:
+                zone_content = zone_match.group(1)
+                
+                # Extraire l'ID et le score
+                zone_id_match = re.search(r'"zone_id"\s*:\s*"([^"]*)"', zone_content)
+                confidence_match = re.search(r'"confidence"\s*:\s*([\d.]+)', zone_content)
+                
+                if zone_id_match and confidence_match:
+                    result["matched_zones"].append({
+                        "zone_id": zone_id_match.group(1),
+                        "confidence": float(confidence_match.group(1)),
+                        "reasons": []  # Simplifié pour robustesse
+                    })
+        
+        # Extraire la zone suggérée (même partiellement)
+        suggested_zone_match = re.search(r'"suggested_new_zone"\s*:\s*{(.*?)}', json_str, re.DOTALL)
+        if suggested_zone_match:
+            zone_content = suggested_zone_match.group(1)
+            
+            # Extraire les champs principaux
+            name_match = re.search(r'"name"\s*:\s*"([^"]*)"', zone_content)
+            desc_match = re.search(r'"description"\s*:\s*"([^"]*)"', zone_content)
+            
+            if name_match:
+                result["suggested_new_zone"] = {
+                    "name": name_match.group(1),
+                    "description": desc_match.group(1) if desc_match else "Description non disponible",
+                    "keywords": [],
+                    "typical_skills": []
+                }
+                
+                # Tenter d'extraire des mots-clés s'ils existent
+                keywords_match = re.search(r'"keywords"\s*:\s*\[(.*?)\]', zone_content, re.DOTALL)
+                if keywords_match:
+                    keywords_text = keywords_match.group(1)
+                    keywords = re.findall(r'"([^"]*)"', keywords_text)
+                    result["suggested_new_zone"]["keywords"] = keywords
+        
+        # Si toujours pas de zones, tenter d'en extraire des noms du texte brut
+        if not result["matched_zones"] and not result["suggested_new_zone"]:
+            # Chercher des noms potentiels de zones dans la réponse
+            potential_zones = re.findall(r'["\']([A-Za-z\s]+?)["\']', raw_response)
+            if potential_zones:
+                result["suggested_new_zone"] = {
+                    "name": potential_zones[0],
+                    "description": "Zone extraite du texte brut suite à une erreur",
+                    "keywords": [],
+                    "typical_skills": []
+                }
+        
+        return result
+
+    def _create_fallback_json(self, raw_response, cv_text):
+        """Crée un JSON minimal avec une suggestion basée sur le texte du CV"""
+        # Extraire les premiers mots du CV pour estimer un domaine
+        first_words = cv_text.split()[:50]
+        text_sample = " ".join(first_words)
+        
+        # Chercher des mots-clés communs dans les domaines de compétences
+        domains = {
+            "Développement": ["développeur", "programmeur", "code", "javascript", "python", "java", "web"],
+            "Marketing": ["marketing", "communication", "digital", "seo", "publicité", "vente"],
+            "Finance": ["finance", "comptable", "comptabilité", "audit", "financier", "trésorerie"],
+            "Ressources Humaines": ["rh", "ressources humaines", "recrutement", "formation", "talent"],
+            "Cybersécurité": ["cybersécurité", "sécurité", "audit", "pentest", "hacking", "firewall"],
+            "Data Science": ["data", "données", "statistiques", "analyse", "machine learning", "ia"]
+        }
+        
+        # Trouver le domaine le plus probable
+        best_domain = None
+        best_count = 0
+        
+        for domain, keywords in domains.items():
+            count = sum(1 for keyword in keywords if keyword.lower() in text_sample.lower())
+            if count > best_count:
+                best_count = count
+                best_domain = domain
+        
+        # Utiliser un domaine par défaut si aucun n'est trouvé
+        if not best_domain or best_count == 0:
+            best_domain = "Profil Généraliste"
+        
+        return {
+            "matched_zones": [],
+            "suggested_new_zone": {
+                "name": best_domain,
+                "description": f"Zone suggérée automatiquement basée sur l'analyse du CV",
+                "keywords": [],
+                "typical_skills": []
+            }
+        }
     
     @sync_to_async
     def _process_classification_result(

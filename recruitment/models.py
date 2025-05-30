@@ -1354,7 +1354,7 @@ class SkillZoneCandidate(HorillaModel):
         SkillZone,
         verbose_name=_("Skill Zone"),
         related_name="skillzonecandidate_set",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         null=True,
     )
     candidate_id = models.ForeignKey(
@@ -1413,7 +1413,12 @@ class SkillZoneCandidate(HorillaModel):
         ]
 
     def __str__(self) -> str:
-        return str(self.candidate_id.get_full_name())
+        if self.candidate_id:
+            return str(self.candidate_id.get_full_name())
+        elif self.classification_details and 'original_filename' in self.classification_details:
+            return f"CV: {self.classification_details['original_filename']}"
+        else:
+            return f"CV sans candidat #{self.id}"
     
     def get_confidence_percentage(self):
         """Retourne le score de confiance en pourcentage"""

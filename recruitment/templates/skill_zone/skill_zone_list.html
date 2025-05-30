@@ -100,7 +100,11 @@
                                 </div>
                                 {% for sz_candidate in skill_zone.list %}
                                     <div class="oh-sticky-table__tbody"
-                                        onclick="window.location.href = `{% url 'candidate-view-individual' sz_candidate.candidate_id.id %}` "
+                                        {% if sz_candidate.candidate_id %}
+                                                  onclick="window.location.href = `{% url 'candidate-view-individual' sz_candidate.candidate_id.id %}`"
+                                              {% else %}
+                                                  onclick="event.stopPropagation();"
+                                              {% endif %}
                                     >
                                         <div class="oh-sticky-table__tr" draggable="true">
                                             <div class="oh-sticky-table__sd" >
